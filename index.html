@@ -127,6 +127,19 @@ button{background:none;border:0;cursor:pointer}
 .acts .warn{color:#C42B37;background:#FDEDEE;border-color:transparent}
 .note{margin-top:16px;text-align:center;font-size:12px;color:var(--dim)}
 
+/* ---- 同期チップ ---- */
+.sync{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 12px;border-radius:999px;font-size:11px;font-weight:800;
+  background:#EEF1F8;color:var(--dim);border:1px solid var(--line);
+}
+.sync::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.sync[data-mode="ok"]{background:#E6F7F1;color:#00754F;border-color:#C9EDE0}
+.sync[data-mode="sync"]{background:#E6F6FD;color:#0077A3;border-color:#C8E9F8}
+.sync[data-mode="local"]{background:#EEF1F8;color:var(--dim)}
+.sync[data-mode="err"]{background:#FFEBF3;color:#B00A46;border-color:#F8CFDF}
+.sync[hidden]{display:none}
+
 /* ---- シート ---- */
 .sheet{position:fixed;inset:0;background:rgba(21,26,36,.42);display:none;align-items:flex-end;z-index:40}
 .sheet.on{display:flex}
@@ -169,6 +182,7 @@ button{background:none;border:0;cursor:pointer}
 <div class="top">
   <h1>DAILY REPS</h1>
   <span class="spacer"></span>
+  <button class="sync" id="syncChip" hidden></button>
   <div class="streak"><b id="streak">0</b><small>日連続</small></div>
 </div>
 
@@ -242,6 +256,7 @@ const DEFAULT_TASKS = [
 ];
 
 const KEY = "dailyreps.v2";
+const REMOTE = "data/state.json";   // 自動同期の保存先（Artifact 上のファイル）
 const $ = s=>document.querySelector(s);
 const $$ = s=>[...document.querySelectorAll(s)];
 
@@ -255,24 +270,174 @@ function ymd(d){
 }
 function addDays(s,n){ const d=new Date(s+"T00:00:00"); d.setDate(d.getDate()+n); return ymd(d); }
 
+/* ---- 記録の形をそろえる ----
+   meta.days[日付] / meta.tasksAt は「いつ書き換えたか」の時刻。
+   端末どうしで突き合わせるとき、新しいほうを残すために使う。 */
+function normalize(s){
+  const ok = s && Array.isArray(s.tasks) && s.tasks.length;
+  const out = {
+    tasks: ok ? s.tasks.map(t=>({...t})) : DEFAULT_TASKS.map(t=>({...t})),
+    log:   (s && s.log && typeof s.log==="object") ? {...s.log} : {},
+    meta:  {
+      tasksAt: (s && s.meta && +s.meta.tasksAt) || 0,
+      days:    (s && s.meta && s.meta.days) ? {...s.meta.days} : {}
+    }
+  };
+  for(const d in out.log){ if(!(d in out.meta.days)) out.meta.days[d]=0; }
+  return out;
+}
+
+/* ---- 2つの記録を突き合わせる（日ごとに新しいほうを採用） ---- */
+function mergeState(a,b){
+  a=normalize(a); b=normalize(b);
+  const out = {
+    tasks: (b.meta.tasksAt > a.meta.tasksAt ? b.tasks : a.tasks).map(t=>({...t})),
+    log:   {},
+    meta:  {tasksAt: Math.max(a.meta.tasksAt,b.meta.tasksAt), days:{}}
+  };
+  const days = new Set(Object.keys(a.meta.days).concat(Object.keys(b.meta.days)));
+  days.forEach(d=>{
+    const ta=a.meta.days[d]||0, tb=b.meta.days[d]||0;
+    out.meta.days[d]=Math.max(ta,tb);
+    let v;
+    if(tb>ta)      v=b.log[d];
+    else if(ta>tb) v=a.log[d];
+    else           v=[...new Set([...(a.log[d]||[]),...(b.log[d]||[])])];  // 同時刻はまとめる
+    if(v && v.length) out.log[d]=v.slice();
+  });
+  return out;
+}
+
+/* ---- 比べやすいように並び順をそろえて文字列化 ---- */
+function serialize(s){
+  s=normalize(s);
+  const log={}, days={};
+  Object.keys(s.log).sort().forEach(k=>log[k]=s.log[k]);
+  Object.keys(s.meta.days).sort().forEach(k=>days[k]=s.meta.days[k]);
+  return JSON.stringify({v:3, tasks:s.tasks, log, meta:{tasksAt:s.meta.tasksAt, days}});
+}
+
 function load(){
   try{
     const raw = localStorage.getItem(KEY);
     if(raw){
       const s = JSON.parse(raw);
-      if(Array.isArray(s.tasks) && s.tasks.length) return {tasks:s.tasks, log:s.log||{}};
+      if(Array.isArray(s.tasks) && s.tasks.length) return normalize(s);
     }
   }catch(e){}
-  return {tasks:DEFAULT_TASKS.map(t=>({...t})), log:{}};
+  return normalize(null);
 }
-function save(){
-  try{ localStorage.setItem(KEY, JSON.stringify(state)); }
+
+/* ---- 保存。what で「どこを触ったか」を記録し、同期に渡す ----
+   what: {day:"2026-08-23"} / {tasks:true} / {all:true} */
+function save(what){
+  const t = Date.now();
+  if(what){
+    if(what.day)   state.meta.days[what.day]=t;
+    if(what.tasks) state.meta.tasksAt=t;
+    if(what.all){
+      state.meta.tasksAt=t;
+      for(const d in state.log) state.meta.days[d]=t;
+      for(const d in state.meta.days) state.meta.days[d]=t;
+    }
+  }
+  try{ localStorage.setItem(KEY, serialize(state)); }
   catch(e){ toast("保存できませんでした"); }
+  SYNC.schedule();
 }
 function toast(m){
   const t=$("#toast"); t.textContent=m; t.classList.add("on");
   clearTimeout(t._id); t._id=setTimeout(()=>t.classList.remove("on"),1600);
 }
+
+/* ================= 自動同期 =================
+   Artifact として開いているときだけ動く。
+   記録は data/state.json に保存され、ほかの端末のタブは自動で読み直す。
+   ふつうのブラウザ／ホーム画面アプリでは、これまで通り端末内保存のみ。 */
+const SYNC = {
+  ns:null, timer:null, busy:false, dirty:false, sent:"", pulling:false,
+  chip:$("#syncChip"),
+
+  show(mode,label){
+    const c=this.chip; if(!c) return;
+    c.hidden = !label; c.dataset.mode=mode; c.textContent=label;
+  },
+
+  async init(){
+    if(!(window.claude && typeof window.claude.use === "function")){ this.show("local",""); return; }
+    this.show("sync","同期を準備中");
+    try{ this.ns = await window.claude.use("artifact"); }catch(e){ this.ns=null; }
+    if(!this.ns){ this.show("local","この端末のみ"); return; }
+    this.show("ok","同期オン");
+    await this.pull();
+    document.addEventListener("visibilitychange",()=>{
+      if(document.visibilityState==="visible") this.pull();
+    });
+    setInterval(()=>{ if(document.visibilityState==="visible") this.pull(); }, 60000);
+    if(this.chip) this.chip.onclick=()=>{ this.pull().then(()=>this.schedule(200)); };
+  },
+
+  async remote(){
+    try{
+      const r = await fetch(REMOTE+"?t="+Date.now(), {cache:"no-store"});
+      if(!r.ok) return null;
+      const o = JSON.parse(await r.text());
+      return (o && Array.isArray(o.tasks)) ? o : null;
+    }catch(e){ return null; }
+  },
+
+  /* 相手の記録を読んで、こちらと突き合わせる */
+  async pull(){
+    if(!this.ns || this.pulling) return;
+    this.pulling = true;
+    try{
+      const rem = await this.remote();
+      if(!rem){ if(this.dirty || !this.sent) this.schedule(300); return; }
+      const before = serialize(state);
+      const merged = serialize(mergeState(state, rem));
+      if(merged !== before){
+        state = normalize(JSON.parse(merged));
+        try{ localStorage.setItem(KEY, merged); }catch(e){}
+        render();
+      }
+      if(merged !== serialize(rem)) this.schedule(300);   // こちらにしかない分を送る
+      else { this.sent = merged; this.dirty = false; this.show("ok","同期済み"); }
+    }finally{ this.pulling = false; }
+  },
+
+  schedule(ms){
+    if(!this.ns) return;
+    this.dirty = true;
+    this.show("sync","同期中…");
+    clearTimeout(this.timer);
+    this.timer = setTimeout(()=>this.push(), ms || 1800);
+  },
+
+  async push(){
+    if(!this.ns || this.busy) return;
+    const body = serialize(state);
+    if(body === this.sent){ this.dirty=false; this.show("ok","同期済み"); return; }
+    this.busy = true;
+    try{
+      await this.ns.publish({[REMOTE]:{content:body, contentType:"application/json"}});
+      this.sent = body; this.dirty = false;
+      this.show("ok","同期済み");
+    }catch(err){
+      const code = (err && err.code) || "upstream_error";
+      if(code==="conflict"){ this.busy=false; await this.pull(); this.schedule(1500); return; }
+      if(code==="rate_limited"){ this.busy=false; this.schedule(10000); return; }
+      if(code==="not_writer" || code==="not_granted" || code==="not_declared" || code==="consent_required"){
+        this.ns=null; this.show("local","この端末のみ"); return;
+      }
+      if(code==="capability_disabled" || code==="capability_removed"){
+        this.ns=null; this.show("local","この端末のみ"); return;
+      }
+      if(code==="too_large"){ this.show("err","記録が大きすぎます"); return; }
+      this.show("err","同期できません");
+      this.busy=false; this.schedule(20000); return;
+    }finally{ this.busy = false; }
+  }
+};
 
 const doneOf = d => state.log[d] || [];
 const isDone = (d,id) => doneOf(d).includes(id);
@@ -282,7 +447,7 @@ function toggle(id){
   const i = arr.indexOf(id);
   if(i>=0) arr.splice(i,1); else arr.push(id);
   if(arr.length) state.log[sel]=arr; else delete state.log[sel];
-  save(); render();
+  save({day:sel}); render();
 }
 
 /* ---- 連続日数：コア習慣を全部やった日が続いた数 ---- */
@@ -390,24 +555,24 @@ function renderEdit(){
     const r=document.createElement("div"); r.className="erow";
     const inp=document.createElement("input");
     inp.className="en"; inp.value=t.name;
-    inp.oninput=()=>{ t.name=inp.value; save(); };
-    inp.onblur=()=>{ if(!t.name.trim()){ t.name="（名前なし）"; inp.value=t.name; save(); } render(); };
+    inp.oninput=()=>{ t.name=inp.value; save({tasks:true}); };
+    inp.onblur=()=>{ if(!t.name.trim()){ t.name="（名前なし）"; inp.value=t.name; save({tasks:true}); } render(); };
     const sel2=document.createElement("select");
     CATS.forEach(c=>{
       const o=document.createElement("option"); o.value=c.id; o.textContent=c.jp;
       if(c.id===t.cat) o.selected=true; sel2.appendChild(o);
     });
-    sel2.onchange=()=>{ t.cat=sel2.value; save(); render(); };
+    sel2.onchange=()=>{ t.cat=sel2.value; save({tasks:true}); render(); };
     const st=document.createElement("button");
     st.className="st"; st.textContent="★"; if(t.core) st.dataset.on="1";
-    st.onclick=()=>{ t.core=!t.core; save(); renderEdit(); render(); };
+    st.onclick=()=>{ t.core=!t.core; save({tasks:true}); renderEdit(); render(); };
     const rm=document.createElement("button");
     rm.className="rm"; rm.textContent="×";
     rm.onclick=()=>{
       if(!confirm("「"+t.name+"」を削除します。よろしいですか。")) return;
       state.tasks=state.tasks.filter(x=>x.id!==t.id);
       for(const d in state.log) state.log[d]=state.log[d].filter(x=>x!==t.id);
-      save(); renderEdit(); render();
+      save({all:true}); renderEdit(); render();
     };
     r.append(inp,sel2,st,rm); el.appendChild(r);
   });
@@ -429,7 +594,7 @@ $("#btnAdd").onclick=()=>{
   if(!name){ toast("名前を入れてください"); return; }
   state.tasks.push({id:"u"+Date.now(),cat:$("#newCat").value,name,core:false});
   $("#newName").value="";
-  save(); renderEdit(); render(); toast("追加しました");
+  save({tasks:true}); renderEdit(); render(); toast("追加しました");
 };
 $$("[data-close]").forEach(b=>b.onclick=()=>$$(".sheet").forEach(s=>s.classList.remove("on")));
 $$(".sheet").forEach(s=>s.addEventListener("click",e=>{ if(e.target===s) s.classList.remove("on"); }));
@@ -437,13 +602,27 @@ $$(".sheet").forEach(s=>s.addEventListener("click",e=>{ if(e.target===s) s.class
 $("#btnClear").onclick=()=>{
   if(!doneOf(sel).length){ toast("チェックはありません"); return; }
   if(!confirm("この日のチェックを全部消します。")) return;
-  delete state.log[sel]; save(); render(); toast("消しました");
+  delete state.log[sel]; save({day:sel}); render(); toast("消しました");
 };
-$("#btnExport").onclick=()=>{
-  const blob=new Blob([JSON.stringify(state)],{type:"application/json"});
+$("#btnExport").onclick=async ()=>{
+  const body=serialize(state), name="daily-reps-"+today()+".json";
+  /* Artifact 上ではブラウザの直接ダウンロードが使えないので、保存のしくみを借りる */
+  if(window.claude && typeof window.claude.use === "function"){
+    let dl=null;
+    try{ dl = await window.claude.use("downloads"); }catch(e){}
+    if(dl){
+      try{ await dl.save({filename:name, data:body}); toast("保存しました"); }
+      catch(err){
+        const code=(err && err.code)||"";
+        toast(code==="declined" ? "保存をやめました" : "保存できませんでした");
+      }
+      return;
+    }
+  }
+  const blob=new Blob([body],{type:"application/json"});
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a");
-  a.href=url; a.download="daily-reps-"+today()+".json";
+  a.href=url; a.download=name;
   document.body.appendChild(a); a.click();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
   toast("保存しました");
@@ -456,8 +635,8 @@ $("#fileIn").onchange=e=>{
     try{
       const s=JSON.parse(r.result);
       if(!s || !Array.isArray(s.tasks)) throw 0;
-      state={tasks:s.tasks, log:s.log||{}};
-      save(); render(); toast("読み込みました");
+      state=normalize(s);
+      save({all:true}); render(); toast("読み込みました");
     }catch(err){ toast("このファイルは読み込めません"); }
   };
   r.readAsText(f); e.target.value="";
@@ -471,12 +650,15 @@ const manifest={
   background_color:"#F2F4F9", theme_color:"#F2F4F9",
   icons:[{src:ICON,sizes:"512x512",type:"image/png",purpose:"any maskable"}]
 };
-const ml=document.createElement("link");
-ml.rel="manifest";
-ml.href=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:"application/manifest+json"}));
-document.head.appendChild(ml);
-if("serviceWorker" in navigator){
-  window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+const ON_ARTIFACT = !!(window.claude && typeof window.claude.use === "function");
+if(!ON_ARTIFACT){
+  const ml=document.createElement("link");
+  ml.rel="manifest";
+  ml.href=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:"application/manifest+json"}));
+  document.head.appendChild(ml);
+  if("serviceWorker" in navigator){
+    window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+  }
 }
 
 /* ---- 日付が変わったら今日に戻す ---- */
@@ -486,6 +668,7 @@ document.addEventListener("visibilitychange",()=>{
 
 fillCatSelect();
 render();
+SYNC.init();
 </script>
 </body>
 </html>
