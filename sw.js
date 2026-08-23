@@ -1,5 +1,5 @@
 // DAILY REPS — オフライン用のキャッシュ
-const CACHE = "dailyreps-v2";
+const CACHE = "dailyreps-v3";
 const FILES = ["./", "./index.html"];
 
 self.addEventListener("install", e => {
@@ -16,6 +16,8 @@ self.addEventListener("activate", e => {
 
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
+  // 同期の通信（GitHub API）は素通しする。キャッシュすると古い記録を掴む
+  if (new URL(e.request.url).origin !== self.location.origin) return;
   e.respondWith(
     fetch(e.request)
       .then(res => {

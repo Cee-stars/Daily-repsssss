@@ -227,6 +227,31 @@ button{background:none;border:0;cursor:pointer}
   <button class="ghost" data-close="1">閉じる</button>
 </div></div>
 
+<div class="sheet" id="sheetSync"><div class="inner">
+  <h3>自動同期</h3>
+  <div class="sub" id="syncState"></div>
+  <button class="primary" id="btnSyncNow">今すぐ同期する</button>
+
+  <div id="ghSetup">
+    <div class="sub" style="margin-top:22px">
+      記録は GitHub の <b>Cee-stars/Daily-repsssss</b>（<b>data</b> ブランチ）に保存されます。
+      端末ごとに1回だけ、下にトークンを貼ってください。トークンはこの端末の中だけに残ります。
+      <br><br>
+      作り方：<a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub のトークン作成ページ</a>を開き、
+      Repository access で <b>Daily-repsssss</b> だけを選び、Permissions の <b>Contents</b> を
+      <b>Read and write</b> にして作ります。
+    </div>
+    <div class="addrow">
+      <input id="ghToken" type="password" inputmode="text" autocomplete="off"
+             autocapitalize="off" spellcheck="false" placeholder="github_pat_… を貼り付け">
+    </div>
+    <button class="primary" id="btnSyncSave">この端末で同期を始める</button>
+    <button class="ghost" id="btnSyncOff">この端末の同期をやめる</button>
+  </div>
+
+  <button class="ghost" data-close="1">閉じる</button>
+</div></div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -256,7 +281,9 @@ const DEFAULT_TASKS = [
 ];
 
 const KEY = "dailyreps.v2";
-const REMOTE = "data/state.json";   // 自動同期の保存先（Artifact 上のファイル）
+const REMOTE = "data/state.json";   // Artifact 版の保存先
+const GH_KEY = "dailyreps.gh.v1";  // この端末のトークン（端末の中だけに置く）
+const GH = {owner:"Cee-stars", repo:"Daily-repsssss", branch:"data", path:"state.json"};
 const $ = s=>document.querySelector(s);
 const $$ = s=>[...document.querySelectorAll(s)];
 
@@ -351,48 +378,126 @@ function toast(m){
 }
 
 /* ================= 自動同期 =================
-   Artifact として開いているときだけ動く。
-   記録は data/state.json に保存され、ほかの端末のタブは自動で読み直す。
-   ふつうのブラウザ／ホーム画面アプリでは、これまで通り端末内保存のみ。 */
+   保存先は2通り。どちらも記録の形は同じ。
+     GitHub … ホーム画面アプリ／ふつうのブラウザ。端末ごとにトークンを1回入れる
+     Artifact … Claude の Artifact として開いたとき（設定不要）
+   どちらも使えないときは端末内保存だけで動く。 */
+
+function ghToken(){ try{ return localStorage.getItem(GH_KEY) || ""; }catch(e){ return ""; } }
+
+/* 文字列 <-> base64（日本語を含むので UTF-8 を経由する） */
+function b64enc(str){
+  const b=new TextEncoder().encode(str);
+  let out=""; for(let i=0;i<b.length;i++) out+=String.fromCharCode(b[i]);
+  return btoa(out);
+}
+function b64dec(b64){
+  const bin=atob(String(b64).replace(/\s/g,""));
+  const b=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) b[i]=bin.charCodeAt(i);
+  return new TextDecoder().decode(b);
+}
+
+/* ---- 保存先：GitHub のリポジトリ ---- */
+function ghStore(token){
+  const url = "https://api.github.com/repos/"+GH.owner+"/"+GH.repo+"/contents/"+GH.path;
+  const head = {
+    "Authorization":"Bearer "+token,
+    "Accept":"application/vnd.github+json",
+    "X-GitHub-Api-Version":"2022-11-28"
+  };
+  let sha = null;   // いま持っている版。書き込みのときに突き合わせに使う
+  const fail = r => {
+    if(r.status===401) return {code:"auth"};
+    if(r.status===403) return {code: r.headers.get("x-ratelimit-remaining")==="0" ? "rate" : "auth"};
+    if(r.status===404) return {code:"auth", missing:true};
+    return {code:"net", status:r.status};
+  };
+  return {
+    name:"github",
+    async load(){
+      const r = await fetch(url+"?ref="+GH.branch+"&t="+Date.now(), {headers:head, cache:"no-store"});
+      if(r.status===404){ sha=null; return null; }        // まだファイルがない
+      if(!r.ok) throw fail(r);
+      const j = await r.json();
+      sha = j.sha || null;
+      try{ return JSON.parse(b64dec(j.content||"")); }catch(e){ return null; }
+    },
+    async save(body){
+      const payload = {message:"reps "+today(), content:b64enc(body), branch:GH.branch};
+      if(sha) payload.sha = sha;
+      const r = await fetch(url, {method:"PUT", headers:{...head,"Content-Type":"application/json"}, body:JSON.stringify(payload)});
+      if(r.status===409 || r.status===422) throw {code:"conflict"};   // 別の端末が先に書いた
+      if(!r.ok) throw fail(r);
+      const j = await r.json();
+      sha = (j.content && j.content.sha) || null;
+    }
+  };
+}
+
+/* ---- 保存先：Artifact 自身のファイル ---- */
+function artifactStore(ns){
+  return {
+    name:"artifact",
+    async load(){
+      const r = await fetch(REMOTE+"?t="+Date.now(), {cache:"no-store"});
+      if(!r.ok) return null;
+      try{ return JSON.parse(await r.text()); }catch(e){ return null; }
+    },
+    async save(body){
+      try{
+        await ns.publish({[REMOTE]:{content:body, contentType:"application/json"}});
+      }catch(err){
+        const c=(err && err.code)||"";
+        if(c==="conflict") throw {code:"conflict"};
+        if(c==="rate_limited") throw {code:"rate"};
+        if(c==="too_large") throw {code:"size"};
+        if(/not_writer|not_granted|not_declared|consent_required|capability_/.test(c)) throw {code:"auth"};
+        throw {code:"net"};
+      }
+    }
+  };
+}
+
 const SYNC = {
-  ns:null, timer:null, busy:false, dirty:false, sent:"", pulling:false,
+  store:null, timer:null, busy:false, dirty:false, sent:"", pulling:false, note:"",
   chip:$("#syncChip"),
 
-  show(mode,label){
-    const c=this.chip; if(!c) return;
-    c.hidden = !label; c.dataset.mode=mode; c.textContent=label;
+  show(mode,label,note){
+    this.note = note || this.note;
+    const c=this.chip; if(c){ c.hidden=false; c.dataset.mode=mode; c.textContent=label; }
+    const st=$("#syncState"); if(st) st.textContent = this.note;
   },
 
   async init(){
-    if(!(window.claude && typeof window.claude.use === "function")){ this.show("local",""); return; }
-    this.show("sync","同期を準備中");
-    try{ this.ns = await window.claude.use("artifact"); }catch(e){ this.ns=null; }
-    if(!this.ns){ this.show("local","この端末のみ"); return; }
-    this.show("ok","同期オン");
+    if(window.claude && typeof window.claude.use === "function"){
+      let ns=null;
+      try{ ns = await window.claude.use("artifact"); }catch(e){}
+      if(ns) this.store = artifactStore(ns);
+    }
+    if(!this.store && ghToken()) this.store = ghStore(ghToken());
+    if(!this.store){
+      this.show("off","同期オフ","この端末はまだ同期していません。下でトークンを入れると始まります。");
+      return;
+    }
+    this.show("sync","同期を確認中","");
     await this.pull();
     document.addEventListener("visibilitychange",()=>{
       if(document.visibilityState==="visible") this.pull();
     });
     setInterval(()=>{ if(document.visibilityState==="visible") this.pull(); }, 60000);
-    if(this.chip) this.chip.onclick=()=>{ this.pull().then(()=>this.schedule(200)); };
-  },
-
-  async remote(){
-    try{
-      const r = await fetch(REMOTE+"?t="+Date.now(), {cache:"no-store"});
-      if(!r.ok) return null;
-      const o = JSON.parse(await r.text());
-      return (o && Array.isArray(o.tasks)) ? o : null;
-    }catch(e){ return null; }
   },
 
   /* 相手の記録を読んで、こちらと突き合わせる */
   async pull(){
-    if(!this.ns || this.pulling) return;
+    if(!this.store || this.pulling) return;
     this.pulling = true;
     try{
-      const rem = await this.remote();
-      if(!rem){ if(this.dirty || !this.sent) this.schedule(300); return; }
+      let rem=null;
+      try{ rem = await this.store.load(); }
+      catch(err){ this.trouble(err); return; }
+
+      if(!rem){ this.schedule(300); return; }   // 相手がまだ空。こちらを送る
       const before = serialize(state);
       const merged = serialize(mergeState(state, rem));
       if(merged !== before){
@@ -401,43 +506,57 @@ const SYNC = {
         render();
       }
       if(merged !== serialize(rem)) this.schedule(300);   // こちらにしかない分を送る
-      else { this.sent = merged; this.dirty = false; this.show("ok","同期済み"); }
+      else { this.sent = merged; this.dirty = false; this.show("ok","同期済み","最後に確認: "+hhmm()); }
     }finally{ this.pulling = false; }
   },
 
   schedule(ms){
-    if(!this.ns) return;
+    if(!this.store) return;
     this.dirty = true;
-    this.show("sync","同期中…");
+    this.show("sync","同期中…","");
     clearTimeout(this.timer);
     this.timer = setTimeout(()=>this.push(), ms || 1800);
   },
 
   async push(){
-    if(!this.ns || this.busy) return;
+    if(!this.store || this.busy) return;
     const body = serialize(state);
-    if(body === this.sent){ this.dirty=false; this.show("ok","同期済み"); return; }
+    if(body === this.sent){ this.dirty=false; this.show("ok","同期済み","最後に保存: "+hhmm()); return; }
     this.busy = true;
     try{
-      await this.ns.publish({[REMOTE]:{content:body, contentType:"application/json"}});
+      await this.store.save(body);
       this.sent = body; this.dirty = false;
-      this.show("ok","同期済み");
+      this.show("ok","同期済み","最後に保存: "+hhmm());
     }catch(err){
-      const code = (err && err.code) || "upstream_error";
-      if(code==="conflict"){ this.busy=false; await this.pull(); this.schedule(1500); return; }
-      if(code==="rate_limited"){ this.busy=false; this.schedule(10000); return; }
-      if(code==="not_writer" || code==="not_granted" || code==="not_declared" || code==="consent_required"){
-        this.ns=null; this.show("local","この端末のみ"); return;
-      }
-      if(code==="capability_disabled" || code==="capability_removed"){
-        this.ns=null; this.show("local","この端末のみ"); return;
-      }
-      if(code==="too_large"){ this.show("err","記録が大きすぎます"); return; }
-      this.show("err","同期できません");
-      this.busy=false; this.schedule(20000); return;
+      this.busy = false;
+      if(err && err.code==="conflict"){ await this.pull(); this.schedule(1500); return; }
+      this.trouble(err);
+      return;
     }finally{ this.busy = false; }
+  },
+
+  /* うまくいかなかったとき。記録は端末の中に残っているので消えない */
+  trouble(err){
+    const code=(err && err.code)||"net";
+    if(code==="auth"){
+      this.store = null;
+      this.show("err","同期の設定が必要",
+        err && err.missing
+          ? "保存先が見つかりません。トークンの権限（Contents: Read and write）と、リポジトリの指定を確かめてください。"
+          : "トークンが使えませんでした。期限切れか、権限が足りていないようです。入れ直してください。");
+      return;
+    }
+    if(code==="rate"){ this.show("err","少し待ちます","GitHub の回数制限に当たりました。しばらくして再開します。"); this.schedule(120000); return; }
+    if(code==="size"){ this.show("err","記録が大きすぎます","記録が保存できる大きさを超えました。"); return; }
+    this.show("err","同期できません","通信に失敗しました。記録はこの端末に残っています。20秒後にもう一度試します。");
+    this.schedule(20000);
   }
 };
+
+function hhmm(){
+  const d=new Date();
+  return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+}
 
 const doneOf = d => state.log[d] || [];
 const isDone = (d,id) => doneOf(d).includes(id);
@@ -589,6 +708,39 @@ $("#wNext").onclick=()=>{
   anchor=n; sel=n>today()?today():n; render();
 };
 $("#btnEdit").onclick=()=>{ renderEdit(); $("#sheetEdit").classList.add("on"); };
+
+/* ---- 同期の設定 ---- */
+$("#syncChip").onclick=()=>{
+  $("#syncState").textContent = SYNC.note || "";
+  /* Artifact 版はトークンなしで同期できるので、設定欄は出さない */
+  $("#ghSetup").hidden = !!(window.claude && typeof window.claude.use === "function");
+  $("#ghToken").value = "";
+  $("#btnSyncOff").hidden = !ghToken();
+  $("#btnSyncNow").hidden = !SYNC.store && !ghToken();   // 設定前は出さない
+  $("#sheetSync").classList.add("on");
+};
+$("#btnSyncNow").onclick=()=>{
+  if(!SYNC.store && ghToken()) SYNC.store = ghStore(ghToken());
+  if(!SYNC.store){ toast("先に同期を始めてください"); return; }
+  SYNC.pull().then(()=>SYNC.schedule(200));
+};
+$("#btnSyncSave").onclick=()=>{
+  const t=$("#ghToken").value.trim();
+  if(!t){ toast("トークンを貼り付けてください"); return; }
+  try{ localStorage.setItem(GH_KEY, t); }catch(e){ toast("この端末に保存できませんでした"); return; }
+  $("#ghToken").value=""; $("#btnSyncOff").hidden=false;
+  SYNC.store = ghStore(t); SYNC.sent="";
+  SYNC.show("sync","同期を確認中","");
+  SYNC.pull().then(()=>SYNC.schedule(200));
+  toast("同期を始めました");
+};
+$("#btnSyncOff").onclick=()=>{
+  if(!confirm("この端末の同期をやめます。記録は端末に残ります。")) return;
+  try{ localStorage.removeItem(GH_KEY); }catch(e){}
+  SYNC.store=null; SYNC.sent=""; $("#btnSyncOff").hidden=true;
+  SYNC.show("off","同期オフ","この端末の同期をやめました。記録は端末に残っています。");
+  toast("同期をやめました");
+};
 $("#btnAdd").onclick=()=>{
   const name=$("#newName").value.trim();
   if(!name){ toast("名前を入れてください"); return; }
