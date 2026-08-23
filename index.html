@@ -150,6 +150,14 @@ button{background:none;border:0;cursor:pointer}
 }
 .inner h3{margin:0 0 4px;font-family:var(--display);font-size:19px;font-weight:900}
 .inner .sub{font-size:12.5px;color:var(--dim);line-height:1.7;margin-bottom:16px}
+.now{
+  background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:12px 14px;margin-top:18px;display:grid;gap:7px;
+}
+.now div{display:flex;gap:10px;align-items:baseline;font-size:12.5px}
+.now b{font-size:11px;font-weight:800;color:var(--dim);letter-spacing:.04em;min-width:5.2em}
+.now span{font-family:var(--mono);font-size:12px;word-break:break-all}
+.now .off{font-family:var(--ui);color:var(--dim)}
 .erow{
   display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);
   border-radius:14px;padding:9px 10px;margin-bottom:8px;
@@ -233,17 +241,25 @@ button{background:none;border:0;cursor:pointer}
   <button class="primary" id="btnSyncNow">今すぐ同期する</button>
 
   <div id="ghSetup">
-    <div class="sub" style="margin-top:22px">
-      記録は GitHub の <b>Cee-stars/Daily-repsssss</b>（<b>data</b> ブランチ）に保存されます。
-      端末ごとに1回だけ、下にトークンを貼ってください。トークンはこの端末の中だけに残ります。
+    <div class="now" id="ghNow"></div>
+
+    <div class="sub" style="margin-top:18px">
+      記録は GitHub の <b>Gist</b> に保存されます。端末ごとに1回だけ、
+      <b>トークン</b>と<b>Gist ID</b> を入れてください。どちらもこの端末の中だけに残ります。
       <br><br>
-      作り方：<a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub のトークン作成ページ</a>を開き、
-      Repository access で <b>Daily-repsssss</b> だけを選び、Permissions の <b>Contents</b> を
-      <b>Read and write</b> にして作ります。
+      <b>1.</b> <a href="https://gist.github.com/" target="_blank" rel="noopener">Gist を作る</a>
+      … ファイル名を <b>daily-reps.json</b>、中身を <b>{}</b> にして
+      <b>Create secret gist</b>。できた URL の最後の英数字が Gist ID です。
+      <br>
+      <b>2.</b> <a href="https://github.com/settings/tokens/new?scopes=gist&description=DAILY%20REPS" target="_blank" rel="noopener">トークンを作る</a>
+      … <b>gist</b> にチェックを入れて作ります。
     </div>
+
     <div class="addrow">
       <input id="ghToken" type="password" inputmode="text" autocomplete="off"
-             autocapitalize="off" spellcheck="false" placeholder="github_pat_… を貼り付け">
+             autocapitalize="off" spellcheck="false" placeholder="トークン（ghp_… を貼り付け）">
+      <input id="ghGist" type="text" inputmode="text" autocomplete="off"
+             autocapitalize="off" spellcheck="false" placeholder="Gist ID（URL の最後の英数字）">
     </div>
     <button class="primary" id="btnSyncSave">この端末で同期を始める</button>
     <button class="ghost" id="btnSyncOff">この端末の同期をやめる</button>
@@ -282,8 +298,9 @@ const DEFAULT_TASKS = [
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
-const GH_KEY = "dailyreps.gh.v1";  // この端末のトークン（端末の中だけに置く）
-const GH = {owner:"Cee-stars", repo:"Daily-repsssss", branch:"data", path:"state.json"};
+const TOKEN_KEY = "dailyreps.token.v2";  // この端末のトークン（端末の中だけに置く）
+const GIST_KEY  = "dailyreps.gist.v1";   // 記録を置いてある Gist の ID
+const GIST_FILE = "daily-reps.json";     // Gist の中のファイル名
 const $ = s=>document.querySelector(s);
 const $$ = s=>[...document.querySelectorAll(s)];
 
@@ -298,39 +315,77 @@ function ymd(d){
 function addDays(s,n){ const d=new Date(s+"T00:00:00"); d.setDate(d.getDate()+n); return ymd(d); }
 
 /* ---- 記録の形をそろえる ----
-   meta.days[日付] / meta.tasksAt は「いつ書き換えたか」の時刻。
-   端末どうしで突き合わせるとき、新しいほうを残すために使う。 */
+   meta.marks[日付][タスク] は「そのチェックを最後に切り替えた時刻」。
+   meta.cleared[日付] は「その日をまとめて消した時刻」。
+   端末どうしを突き合わせるとき、チェック1つずつで新しいほうを残すために使う。 */
 function normalize(s){
   const ok = s && Array.isArray(s.tasks) && s.tasks.length;
   const out = {
     tasks: ok ? s.tasks.map(t=>({...t})) : DEFAULT_TASKS.map(t=>({...t})),
-    log:   (s && s.log && typeof s.log==="object") ? {...s.log} : {},
-    meta:  {
-      tasksAt: (s && s.meta && +s.meta.tasksAt) || 0,
-      days:    (s && s.meta && s.meta.days) ? {...s.meta.days} : {}
-    }
+    log:   {},
+    meta:  {tasksAt:0, marks:{}, cleared:{}}
   };
-  for(const d in out.log){ if(!(d in out.meta.days)) out.meta.days[d]=0; }
+  const src = (s && s.log && typeof s.log==="object") ? s.log : {};
+  for(const d in src) if(Array.isArray(src[d]) && src[d].length) out.log[d]=[...new Set(src[d])];
+
+  const m = s && s.meta;
+  out.meta.tasksAt = (m && +m.tasksAt) || 0;
+  if(m && m.marks) for(const d in m.marks){
+    const o={};
+    for(const id in m.marks[d]){ const t=+m.marks[d][id]||0; if(t) o[id]=t; }
+    if(Object.keys(o).length) out.meta.marks[d]=o;
+  }
+  if(m && m.cleared) for(const d in m.cleared){ const t=+m.cleared[d]||0; if(t) out.meta.cleared[d]=t; }
+
+  /* 古い形（日ごとに1つの時刻）から移す */
+  if(m && m.days) for(const d in m.days){
+    const t=+m.days[d]||0; if(!t) continue;
+    const ids=out.log[d];
+    if(ids && ids.length){
+      const o=out.meta.marks[d] || (out.meta.marks[d]={});
+      ids.forEach(id=>{ if(!o[id]) o[id]=t; });
+    }else if(!out.meta.cleared[d]) out.meta.cleared[d]=t;
+  }
   return out;
 }
 
-/* ---- 2つの記録を突き合わせる（日ごとに新しいほうを採用） ---- */
+/* そのチェックが最後に動いた時刻（日ごとの全消しも効かせる） */
+function markTs(s,d,id){
+  const m=s.meta.marks[d];
+  return Math.max((m && m[id]) || 0, s.meta.cleared[d] || 0);
+}
+
+/* ---- 2つの記録を突き合わせる（チェック1つずつで新しいほうを残す） ---- */
 function mergeState(a,b){
   a=normalize(a); b=normalize(b);
   const out = {
     tasks: (b.meta.tasksAt > a.meta.tasksAt ? b.tasks : a.tasks).map(t=>({...t})),
     log:   {},
-    meta:  {tasksAt: Math.max(a.meta.tasksAt,b.meta.tasksAt), days:{}}
+    meta:  {tasksAt: Math.max(a.meta.tasksAt,b.meta.tasksAt), marks:{}, cleared:{}}
   };
-  const days = new Set(Object.keys(a.meta.days).concat(Object.keys(b.meta.days)));
-  days.forEach(d=>{
-    const ta=a.meta.days[d]||0, tb=b.meta.days[d]||0;
-    out.meta.days[d]=Math.max(ta,tb);
-    let v;
-    if(tb>ta)      v=b.log[d];
-    else if(ta>tb) v=a.log[d];
-    else           v=[...new Set([...(a.log[d]||[]),...(b.log[d]||[])])];  // 同時刻はまとめる
-    if(v && v.length) out.log[d]=v.slice();
+  const dates = new Set([].concat(
+    Object.keys(a.log), Object.keys(b.log),
+    Object.keys(a.meta.marks), Object.keys(b.meta.marks),
+    Object.keys(a.meta.cleared), Object.keys(b.meta.cleared)));
+
+  dates.forEach(d=>{
+    const cleared = Math.max(a.meta.cleared[d]||0, b.meta.cleared[d]||0);
+    if(cleared) out.meta.cleared[d]=cleared;
+
+    const ids = new Set([].concat(
+      a.log[d]||[], b.log[d]||[],
+      Object.keys(a.meta.marks[d]||{}), Object.keys(b.meta.marks[d]||{})));
+    const keep=[], marks={};
+    ids.forEach(id=>{
+      const ta=markTs(a,d,id), tb=markTs(b,d,id);
+      const inA=(a.log[d]||[]).includes(id), inB=(b.log[d]||[]).includes(id);
+      const on = ta>tb ? inA : tb>ta ? inB : (inA||inB);   // 同時刻はどちらかに付いていれば残す
+      const raw = Math.max((a.meta.marks[d]||{})[id]||0, (b.meta.marks[d]||{})[id]||0);
+      if(raw) marks[id]=raw;
+      if(on) keep.push(id);
+    });
+    if(keep.length) out.log[d]=keep;
+    if(Object.keys(marks).length) out.meta.marks[d]=marks;
   });
   return out;
 }
@@ -338,10 +393,13 @@ function mergeState(a,b){
 /* ---- 比べやすいように並び順をそろえて文字列化 ---- */
 function serialize(s){
   s=normalize(s);
-  const log={}, days={};
-  Object.keys(s.log).sort().forEach(k=>log[k]=s.log[k]);
-  Object.keys(s.meta.days).sort().forEach(k=>days[k]=s.meta.days[k]);
-  return JSON.stringify({v:3, tasks:s.tasks, log, meta:{tasksAt:s.meta.tasksAt, days}});
+  const log={}, marks={}, cleared={};
+  Object.keys(s.log).sort().forEach(d=>log[d]=[...s.log[d]].sort());
+  Object.keys(s.meta.marks).sort().forEach(d=>{
+    const o={}; Object.keys(s.meta.marks[d]).sort().forEach(id=>o[id]=s.meta.marks[d][id]); marks[d]=o;
+  });
+  Object.keys(s.meta.cleared).sort().forEach(d=>cleared[d]=s.meta.cleared[d]);
+  return JSON.stringify({v:4, tasks:s.tasks, log, meta:{tasksAt:s.meta.tasksAt, marks, cleared}});
 }
 
 function load(){
@@ -356,22 +414,33 @@ function load(){
 }
 
 /* ---- 保存。what で「どこを触ったか」を記録し、同期に渡す ----
-   what: {day:"2026-08-23"} / {tasks:true} / {all:true} */
+   {day, id}        チェックの入切
+   {tasks:true}     タスク一覧の編集
+   {tasks:true, offId, offDays}  タスクの削除（そのチェックも落とす）
+   {clear:日付}      その日のチェックを全消し
+   {replaceAll:true} バックアップの読み込み */
 function save(what){
   const t = Date.now();
+  const mark=(d,id,ts)=>{ (state.meta.marks[d] || (state.meta.marks[d]={}))[id]=ts; };
   if(what){
-    if(what.day)   state.meta.days[what.day]=t;
-    if(what.tasks) state.meta.tasksAt=t;
-    if(what.all){
-      state.meta.tasksAt=t;
-      for(const d in state.log) state.meta.days[d]=t;
-      for(const d in state.meta.days) state.meta.days[d]=t;
+    if(what.day && what.id) mark(what.day, what.id, t);
+    if(what.tasks) state.meta.tasksAt = t;
+    if(what.offId && what.offDays) what.offDays.forEach(d=>mark(d, what.offId, t));
+    if(what.clear){ state.meta.cleared[what.clear]=t; delete state.meta.marks[what.clear]; }
+    if(what.replaceAll){
+      state.meta.tasksAt = t;
+      const dates = new Set([].concat(
+        Object.keys(state.log), Object.keys(state.meta.marks), Object.keys(state.meta.cleared)));
+      dates.forEach(d=>{ state.meta.cleared[d]=t-1; });   // いったん全部を古い扱いにして
+      for(const d in state.log) state.log[d].forEach(id=>mark(d,id,t));   // 読み込んだ分を新しく置く
     }
   }
+  for(const d in state.log) if(!state.log[d].length) delete state.log[d];
   try{ localStorage.setItem(KEY, serialize(state)); }
   catch(e){ toast("保存できませんでした"); }
   SYNC.schedule();
 }
+
 function toast(m){
   const t=$("#toast"); t.textContent=m; t.classList.add("on");
   clearTimeout(t._id); t._id=setTimeout(()=>t.classList.remove("on"),1600);
@@ -383,30 +452,19 @@ function toast(m){
      Artifact … Claude の Artifact として開いたとき（設定不要）
    どちらも使えないときは端末内保存だけで動く。 */
 
-function ghToken(){ try{ return localStorage.getItem(GH_KEY) || ""; }catch(e){ return ""; } }
+function ghToken(){ try{ return localStorage.getItem(TOKEN_KEY) || ""; }catch(e){ return ""; } }
+function ghGist(){  try{ return localStorage.getItem(GIST_KEY)  || ""; }catch(e){ return ""; } }
 
-/* 文字列 <-> base64（日本語を含むので UTF-8 を経由する） */
-function b64enc(str){
-  const b=new TextEncoder().encode(str);
-  let out=""; for(let i=0;i<b.length;i++) out+=String.fromCharCode(b[i]);
-  return btoa(out);
-}
-function b64dec(b64){
-  const bin=atob(String(b64).replace(/\s/g,""));
-  const b=new Uint8Array(bin.length);
-  for(let i=0;i<bin.length;i++) b[i]=bin.charCodeAt(i);
-  return new TextDecoder().decode(b);
-}
-
-/* ---- 保存先：GitHub のリポジトリ ---- */
-function ghStore(token){
-  const url = "https://api.github.com/repos/"+GH.owner+"/"+GH.repo+"/contents/"+GH.path;
+/* ---- 保存先：GitHub の Gist ----
+   Gist には「先に書かれていたら弾く」仕組みがないので、
+   書く直前に必ず読み直して突き合わせる（mergeBeforeSave）。 */
+function gistStore(token, id){
+  const url = "https://api.github.com/gists/"+id;
   const head = {
     "Authorization":"Bearer "+token,
     "Accept":"application/vnd.github+json",
     "X-GitHub-Api-Version":"2022-11-28"
   };
-  let sha = null;   // いま持っている版。書き込みのときに突き合わせに使う
   const fail = r => {
     if(r.status===401) return {code:"auth"};
     if(r.status===403) return {code: r.headers.get("x-ratelimit-remaining")==="0" ? "rate" : "auth"};
@@ -414,23 +472,27 @@ function ghStore(token){
     return {code:"net", status:r.status};
   };
   return {
-    name:"github",
+    name:"gist",
+    mergeBeforeSave:true,
     async load(){
-      const r = await fetch(url+"?ref="+GH.branch+"&t="+Date.now(), {headers:head, cache:"no-store"});
-      if(r.status===404){ sha=null; return null; }        // まだファイルがない
+      const r = await fetch(url+"?t="+Date.now(), {headers:head, cache:"no-store"});
       if(!r.ok) throw fail(r);
       const j = await r.json();
-      sha = j.sha || null;
-      try{ return JSON.parse(b64dec(j.content||"")); }catch(e){ return null; }
+      const f = j.files && j.files[GIST_FILE];
+      if(!f) return null;                       // まだファイルがない
+      let text = f.content || "";
+      if(f.truncated && f.raw_url){             // 大きいと中身が省かれる
+        try{ text = await (await fetch(f.raw_url, {cache:"no-store"})).text(); }catch(e){}
+      }
+      try{ return JSON.parse(text); }catch(e){ return null; }
     },
     async save(body){
-      const payload = {message:"reps "+today(), content:b64enc(body), branch:GH.branch};
-      if(sha) payload.sha = sha;
-      const r = await fetch(url, {method:"PUT", headers:{...head,"Content-Type":"application/json"}, body:JSON.stringify(payload)});
-      if(r.status===409 || r.status===422) throw {code:"conflict"};   // 別の端末が先に書いた
+      const r = await fetch(url, {
+        method:"PATCH",
+        headers:{...head,"Content-Type":"application/json"},
+        body: JSON.stringify({files:{[GIST_FILE]:{content:body}}})
+      });
       if(!r.ok) throw fail(r);
-      const j = await r.json();
-      sha = (j.content && j.content.sha) || null;
     }
   };
 }
@@ -470,22 +532,29 @@ const SYNC = {
   },
 
   async init(){
+    /* 読み直しの仕掛けは、あとから設定を入れる場合もあるので先に付けておく
+       （保存先が決まるまでは pull() が何もしない） */
+    document.addEventListener("visibilitychange",()=>{
+      if(document.visibilityState==="visible") this.pull();
+    });
+    setInterval(()=>{ if(document.visibilityState==="visible") this.pull(); }, 60000);
+
     if(window.claude && typeof window.claude.use === "function"){
       let ns=null;
       try{ ns = await window.claude.use("artifact"); }catch(e){}
       if(ns) this.store = artifactStore(ns);
     }
-    if(!this.store && ghToken()) this.store = ghStore(ghToken());
+    try{ localStorage.removeItem("dailyreps.gh.v1"); }catch(e){}   // 古い保存先の名残
+    if(!this.store && ghToken() && ghGist()) this.store = gistStore(ghToken(), ghGist());
     if(!this.store){
-      this.show("off","同期オフ","この端末はまだ同期していません。下でトークンを入れると始まります。");
+      this.show("off","同期オフ",
+        ghToken() || ghGist()
+          ? "トークンと Gist ID の両方が必要です。足りないほうを入れてください。"
+          : "この端末はまだ同期していません。トークンと Gist ID を入れると始まります。");
       return;
     }
     this.show("sync","同期を確認中","");
     await this.pull();
-    document.addEventListener("visibilitychange",()=>{
-      if(document.visibilityState==="visible") this.pull();
-    });
-    setInterval(()=>{ if(document.visibilityState==="visible") this.pull(); }, 60000);
   },
 
   /* 相手の記録を読んで、こちらと突き合わせる */
@@ -520,10 +589,24 @@ const SYNC = {
 
   async push(){
     if(!this.store || this.busy) return;
-    const body = serialize(state);
-    if(body === this.sent){ this.dirty=false; this.show("ok","同期済み","最後に保存: "+hhmm()); return; }
     this.busy = true;
     try{
+      /* Gist は上書きしかできないので、書く前にもう一度読んで突き合わせる */
+      if(this.store.mergeBeforeSave){
+        let rem=null;
+        try{ rem = await this.store.load(); }
+        catch(err){ this.busy=false; this.trouble(err); return; }
+        if(rem){
+          const merged = serialize(mergeState(state, rem));
+          if(merged !== serialize(state)){
+            state = normalize(JSON.parse(merged));
+            try{ localStorage.setItem(KEY, merged); }catch(e){}
+            render();
+          }
+        }
+      }
+      const body = serialize(state);
+      if(body === this.sent){ this.dirty=false; this.show("ok","同期済み","最後に保存: "+hhmm()); return; }
       await this.store.save(body);
       this.sent = body; this.dirty = false;
       this.show("ok","同期済み","最後に保存: "+hhmm());
@@ -542,7 +625,7 @@ const SYNC = {
       this.store = null;
       this.show("err","同期の設定が必要",
         err && err.missing
-          ? "保存先が見つかりません。トークンの権限（Contents: Read and write）と、リポジトリの指定を確かめてください。"
+          ? "その Gist が見つかりません。Gist ID の綴りと、トークンに gist の権限があるかを確かめてください。"
           : "トークンが使えませんでした。期限切れか、権限が足りていないようです。入れ直してください。");
       return;
     }
@@ -566,7 +649,7 @@ function toggle(id){
   const i = arr.indexOf(id);
   if(i>=0) arr.splice(i,1); else arr.push(id);
   if(arr.length) state.log[sel]=arr; else delete state.log[sel];
-  save({day:sel}); render();
+  save({day:sel, id}); render();
 }
 
 /* ---- 連続日数：コア習慣を全部やった日が続いた数 ---- */
@@ -689,9 +772,10 @@ function renderEdit(){
     rm.className="rm"; rm.textContent="×";
     rm.onclick=()=>{
       if(!confirm("「"+t.name+"」を削除します。よろしいですか。")) return;
+      const offDays=Object.keys(state.log).filter(d=>state.log[d].includes(t.id));
       state.tasks=state.tasks.filter(x=>x.id!==t.id);
       for(const d in state.log) state.log[d]=state.log[d].filter(x=>x!==t.id);
-      save({all:true}); renderEdit(); render();
+      save({tasks:true, offId:t.id, offDays}); renderEdit(); render();
     };
     r.append(inp,sel2,st,rm); el.appendChild(r);
   });
@@ -710,34 +794,54 @@ $("#wNext").onclick=()=>{
 $("#btnEdit").onclick=()=>{ renderEdit(); $("#sheetEdit").classList.add("on"); };
 
 /* ---- 同期の設定 ---- */
+function maskToken(t){
+  return t.length<12 ? "設定済み" : t.slice(0,7)+"…"+t.slice(-4);
+}
+function renderSyncNow(){
+  const t=ghToken(), g=ghGist();
+  $("#ghNow").innerHTML =
+    '<div><b>トークン</b>'+(t?'<span>'+maskToken(t)+'</span>':'<span class="off">未設定</span>')+'</div>'+
+    '<div><b>Gist ID</b>'+(g?'<span>'+g+'</span>':'<span class="off">未設定</span>')+'</div>';
+}
 $("#syncChip").onclick=()=>{
   $("#syncState").textContent = SYNC.note || "";
-  /* Artifact 版はトークンなしで同期できるので、設定欄は出さない */
+  /* Artifact 版は設定なしで同期できるので、設定欄は出さない */
   $("#ghSetup").hidden = !!(window.claude && typeof window.claude.use === "function");
+  renderSyncNow();
   $("#ghToken").value = "";
-  $("#btnSyncOff").hidden = !ghToken();
-  $("#btnSyncNow").hidden = !SYNC.store && !ghToken();   // 設定前は出さない
+  $("#ghGist").value  = ghGist();
+  $("#btnSyncOff").hidden = !(ghToken() || ghGist());
+  $("#btnSyncNow").hidden = !SYNC.store;   // 設定が揃う前は出さない
   $("#sheetSync").classList.add("on");
 };
 $("#btnSyncNow").onclick=()=>{
-  if(!SYNC.store && ghToken()) SYNC.store = ghStore(ghToken());
   if(!SYNC.store){ toast("先に同期を始めてください"); return; }
   SYNC.pull().then(()=>SYNC.schedule(200));
 };
 $("#btnSyncSave").onclick=()=>{
-  const t=$("#ghToken").value.trim();
+  const t = $("#ghToken").value.trim() || ghToken();
+  /* Gist の URL ごと貼られても拾えるようにする */
+  const g = ($("#ghGist").value.trim() || ghGist()).replace(/^.*\//,"").replace(/[^0-9a-zA-Z]/g,"");
   if(!t){ toast("トークンを貼り付けてください"); return; }
-  try{ localStorage.setItem(GH_KEY, t); }catch(e){ toast("この端末に保存できませんでした"); return; }
-  $("#ghToken").value=""; $("#btnSyncOff").hidden=false;
-  SYNC.store = ghStore(t); SYNC.sent="";
+  if(!g){ toast("Gist ID を入れてください"); return; }
+  try{
+    localStorage.setItem(TOKEN_KEY, t);
+    localStorage.setItem(GIST_KEY, g);
+  }catch(e){ toast("この端末に保存できませんでした"); return; }
+  $("#ghToken").value=""; $("#ghGist").value=g;
+  $("#btnSyncOff").hidden=false; $("#btnSyncNow").hidden=false;
+  renderSyncNow();
+  SYNC.store = gistStore(t,g); SYNC.sent="";
   SYNC.show("sync","同期を確認中","");
   SYNC.pull().then(()=>SYNC.schedule(200));
   toast("同期を始めました");
 };
 $("#btnSyncOff").onclick=()=>{
   if(!confirm("この端末の同期をやめます。記録は端末に残ります。")) return;
-  try{ localStorage.removeItem(GH_KEY); }catch(e){}
-  SYNC.store=null; SYNC.sent=""; $("#btnSyncOff").hidden=true;
+  try{ localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(GIST_KEY); }catch(e){}
+  SYNC.store=null; SYNC.sent="";
+  $("#ghGist").value=""; $("#btnSyncOff").hidden=true; $("#btnSyncNow").hidden=true;
+  renderSyncNow();
   SYNC.show("off","同期オフ","この端末の同期をやめました。記録は端末に残っています。");
   toast("同期をやめました");
 };
@@ -754,7 +858,7 @@ $$(".sheet").forEach(s=>s.addEventListener("click",e=>{ if(e.target===s) s.class
 $("#btnClear").onclick=()=>{
   if(!doneOf(sel).length){ toast("チェックはありません"); return; }
   if(!confirm("この日のチェックを全部消します。")) return;
-  delete state.log[sel]; save({day:sel}); render(); toast("消しました");
+  delete state.log[sel]; save({clear:sel}); render(); toast("消しました");
 };
 $("#btnExport").onclick=async ()=>{
   const body=serialize(state), name="daily-reps-"+today()+".json";
@@ -788,7 +892,7 @@ $("#fileIn").onchange=e=>{
       const s=JSON.parse(r.result);
       if(!s || !Array.isArray(s.tasks)) throw 0;
       state=normalize(s);
-      save({all:true}); render(); toast("読み込みました");
+      save({replaceAll:true}); render(); toast("読み込みました");
     }catch(err){ toast("このファイルは読み込めません"); }
   };
   r.readAsText(f); e.target.value="";
