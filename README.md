@@ -8,7 +8,7 @@
 
 | 開き方 | 保存先 | 設定 |
 |---|---|---|
-| ホーム画面アプリ／ブラウザ | GitHub の Gist（`daily-reps.json`） | 端末ごとに**トークン**と **Gist ID** を1回入れる |
+| ホーム画面アプリ／ブラウザ | シークレット Gist の `daily-reps.json` | 端末ごとに1回。**つなぐリンク**を貼るのが最短 |
 | Claude の Artifact | Artifact 自身の `data/state.json` | 不要 |
 | 設定しない | その端末の中だけ | — |
 
@@ -16,13 +16,43 @@
 
 ### 端末ごとの設定
 
-1. [Gist を作る](https://gist.github.com/) … ファイル名 `daily-reps.json`、中身 `{}` で **Create secret gist**。
-   できた URL の最後の英数字が Gist ID です（URL ごと貼っても拾います）
-2. [トークンを作る](https://github.com/settings/tokens/new?scopes=gist) … **gist** にチェックを入れて作る
-3. アプリの同期チップ → トークンと Gist ID を入れて「この端末で同期を始める」
+瞬間英作文（`sunkan-333`）・My Dictionary（`dictionary-22`）と同じ作りです。
+1枚のシークレット Gist に、アプリごとに別ファイルを置いて同居します。
 
-どちらもその端末の `localStorage` にだけ残り、リポジトリには入りません。
-期限が切れるとチップが「同期の設定が必要」になるので、新しいトークンを貼り直してください。
+| アプリ | Gist の中のファイル |
+|---|---|
+| 瞬間英作文 | `sunkan-data.json` / `sunkan-inbox.json` |
+| My Dictionary | `mydict-data.json` |
+| DAILY REPS | `daily-reps.json` |
+
+書き込みは自分のファイルだけを名指しするので、ほかのアプリのぶんは踏みません。
+
+**いちばん楽な入れ方**は「つなぐリンク」です。
+瞬間英作文の ⚙ →「つなぐリンクをコピー」で作ったものを、
+このアプリの同期チップ →「つなぐリンクを貼り付ける」に貼って「貼り付けたリンクでつなぐ」。
+トークンと Gist ID がそのまま入るので、iPhone でトークンを打ち込まずに済みます。
+リンクの形は3つのアプリで共通です。
+
+```
+<ページの URL>#pair=base64url({"t": トークン, "g": Gist ID})
+```
+
+`#pair=` 付きの URL で開いた場合も、その場で受け取ってアドレスから消します。
+
+**はじめて作る場合**は、[トークン](https://github.com/settings/tokens/new?scopes=gist)を
+scope `gist` だけで作り、同期チップ →「同期用の保存先を新規作成」。
+シークレット Gist ができて、Gist ID が自動で入ります。
+そのあと「つなぐリンクをコピー」で、ほかの端末やアプリに渡せます。
+
+トークンと Gist ID はその端末の `localStorage` にだけ残り、リポジトリには入りません。
+
+| 鍵 | 中身 |
+|---|---|
+| `dailyreps:sync:token` | トークン |
+| `dailyreps:sync:gistId` | Gist ID |
+| `dailyreps:sync:auto` | 自動同期の入切（`0` で手動だけ） |
+| `dailyreps:sync:last` | 最後に揃えた時刻 |
+| `dailyreps:sync:error` | 最後に失敗した理由（黙って止まらないため） |
 
 ### 突き合わせの決まり
 
@@ -40,6 +70,10 @@
 
 一時期このリポジトリの `data` ブランチに記録を置いていました。いまは使っていません。
 Gist での同期が確認できたら消して構いません。
+
+### 前の設定からの引き継ぎ
+
+`dailyreps.token.v2` / `dailyreps.gist.v1` に入っていた設定は、起動時に新しい鍵へ移して古いほうを消します。
 
 ## Artifact 用ページを作り直す
 

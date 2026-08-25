@@ -158,6 +158,19 @@ button{background:none;border:0;cursor:pointer}
 .now b{font-size:11px;font-weight:800;color:var(--dim);letter-spacing:.04em;min-width:5.2em}
 .now span{font-family:var(--mono);font-size:12px;word-break:break-all}
 .now .off{font-family:var(--ui);color:var(--dim)}
+.field{margin-top:16px}
+.field label{display:block;font-size:12px;font-weight:800;color:var(--dim);margin-bottom:7px}
+.field input,.field textarea{
+  width:100%;padding:13px;border-radius:14px;border:1px solid var(--line);
+  background:var(--card);font-size:16px;font-family:var(--ui);resize:vertical;
+}
+.field .hint{font-size:11.5px;color:var(--dim);line-height:1.7;margin-top:7px}
+.withEye{display:flex;gap:8px;align-items:center}
+.withEye input{flex:1;min-width:0}
+.eye{width:46px;height:46px;border-radius:14px;background:var(--card);border:1px solid var(--line);font-size:17px;flex:none}
+.switch{display:flex;gap:10px;align-items:center;margin-top:18px;font-size:13px;font-weight:700}
+.switch input{width:22px;height:22px;flex:none;accent-color:var(--accent)}
+.sync[data-mode="manual"]{background:#F0F3F9;color:var(--dim)}
 .erow{
   display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);
   border-radius:14px;padding:9px 10px;margin-bottom:8px;
@@ -244,24 +257,47 @@ button{background:none;border:0;cursor:pointer}
     <div class="now" id="ghNow"></div>
 
     <div class="sub" style="margin-top:18px">
-      記録は GitHub の <b>Gist</b> に保存されます。端末ごとに1回だけ、
-      <b>トークン</b>と<b>Gist ID</b> を入れてください。どちらもこの端末の中だけに残ります。
-      <br><br>
-      <b>1.</b> <a href="https://gist.github.com/" target="_blank" rel="noopener">Gist を作る</a>
-      … ファイル名を <b>daily-reps.json</b>、中身を <b>{}</b> にして
-      <b>Create secret gist</b>。できた URL の最後の英数字が Gist ID です。
-      <br>
-      <b>2.</b> <a href="https://github.com/settings/tokens/new?scopes=gist&description=DAILY%20REPS" target="_blank" rel="noopener">トークンを作る</a>
-      … <b>gist</b> にチェックを入れて作ります。
+      瞬間英作文・My Dictionary と同じ Gist に、このアプリのぶんを
+      <b>daily-reps.json</b> として置きます。ほかのアプリのファイルには触りません。
     </div>
 
-    <div class="addrow">
-      <input id="ghToken" type="password" inputmode="text" autocomplete="off"
-             autocapitalize="off" spellcheck="false" placeholder="トークン（ghp_… を貼り付け）">
-      <input id="ghGist" type="text" inputmode="text" autocomplete="off"
-             autocapitalize="off" spellcheck="false" placeholder="Gist ID（URL の最後の英数字）">
+    <div class="field">
+      <label for="pairIn">つなぐリンクを貼り付ける</label>
+      <textarea id="pairIn" rows="2" autocomplete="off" spellcheck="false"
+                placeholder="瞬間英作文の「つなぐリンクをコピー」で作ったもの"></textarea>
+      <div class="hint">トークンと Gist ID がそのまま入ります。手で打ち込む必要はありません。</div>
     </div>
-    <button class="primary" id="btnSyncSave">この端末で同期を始める</button>
+    <button class="ghost" id="btnPairTake">貼り付けたリンクでつなぐ</button>
+
+    <div class="field" style="margin-top:22px">
+      <label for="ghToken">トークン（Personal Access Token）</label>
+      <div class="withEye">
+        <input id="ghToken" type="password" inputmode="text" autocomplete="off"
+               autocapitalize="off" spellcheck="false" placeholder="ghp_… を貼り付け">
+        <button type="button" class="eye" id="ghTokenEye" aria-label="トークンを表示">👁</button>
+      </div>
+      <div class="hint">
+        <a href="https://github.com/settings/tokens/new?scopes=gist&description=DAILY%20REPS" target="_blank" rel="noopener">作成ページ</a>
+        で scope の <b>gist</b> だけにチェックを入れて作ります。
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="ghGist">Gist ID</label>
+      <input id="ghGist" type="text" inputmode="text" autocomplete="off"
+             autocapitalize="off" spellcheck="false" placeholder="URL の最後の英数字">
+      <div class="hint">瞬間英作文と同じ Gist ID を入れると、1枚の Gist に同居します。</div>
+    </div>
+
+    <button class="ghost" id="btnGistCreate">同期用の保存先を新規作成</button>
+
+    <label class="switch">
+      <input type="checkbox" id="ghAuto" checked>
+      <span>自動同期（変更のたび・アプリに戻るたびに揃える）</span>
+    </label>
+
+    <button class="primary" id="btnSyncSave">この設定で同期を始める</button>
+    <button class="ghost" id="btnPairCopy">つなぐリンクをコピー</button>
     <button class="ghost" id="btnSyncOff">この端末の同期をやめる</button>
   </div>
 
@@ -298,9 +334,17 @@ const DEFAULT_TASKS = [
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
-const TOKEN_KEY = "dailyreps.token.v2";  // この端末のトークン（端末の中だけに置く）
-const GIST_KEY  = "dailyreps.gist.v1";   // 記録を置いてある Gist の ID
-const GIST_FILE = "daily-reps.json";     // Gist の中のファイル名
+/* 瞬間英作文・My Dictionary と同じ作り。
+   1枚のシークレット Gist に、アプリごとに別ファイルを置いて同居する。
+   （sunkan-data.json / mydict-data.json / daily-reps.json）
+   トークンと Gist ID は「つなぐリンク」で端末やアプリの間を渡せる。 */
+const TOKEN_KEY = "dailyreps:sync:token";
+const GIST_KEY  = "dailyreps:sync:gistId";
+const AUTO_KEY  = "dailyreps:sync:auto";
+const LAST_KEY  = "dailyreps:sync:last";
+const ERR_KEY   = "dailyreps:sync:error";   // 黙って止まらないよう、最後の失敗を残す
+const GIST_FILE = "daily-reps.json";
+const GIST_API  = "https://api.github.com/gists";
 const $ = s=>document.querySelector(s);
 const $$ = s=>[...document.querySelectorAll(s)];
 
@@ -452,8 +496,69 @@ function toast(m){
      Artifact … Claude の Artifact として開いたとき（設定不要）
    どちらも使えないときは端末内保存だけで動く。 */
 
-function ghToken(){ try{ return localStorage.getItem(TOKEN_KEY) || ""; }catch(e){ return ""; } }
-function ghGist(){  try{ return localStorage.getItem(GIST_KEY)  || ""; }catch(e){ return ""; } }
+function ls(k){ try{ return localStorage.getItem(k) || ""; }catch(e){ return ""; } }
+function lsPut(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } }
+function lsDrop(k){ try{ localStorage.removeItem(k); }catch(e){} }
+
+function ghToken(){ return ls(TOKEN_KEY); }
+function ghGist(){  return ls(GIST_KEY); }
+function ghAuto(){  return ls(AUTO_KEY) !== "0"; }   // 既定は自動
+function ghReady(){ return !!(ghToken() && ghGist()); }
+
+/* 前の作り（リポジトリに置いていた頃）の設定を引き継ぐ */
+function migrateSyncKeys(){
+  const t=ls("dailyreps.token.v2"), g=ls("dailyreps.gist.v1");
+  if(t && !ghToken()) lsPut(TOKEN_KEY, t);
+  if(g && !ghGist())  lsPut(GIST_KEY, g);
+  lsDrop("dailyreps.token.v2"); lsDrop("dailyreps.gist.v1"); lsDrop("dailyreps.gh.v1");
+}
+
+/* ---- つなぐリンク（瞬間英作文・My Dictionary と同じ形） ----
+   <このページ>#pair=base64url({"t":トークン,"g":Gist ID}) */
+function toBase64Url(bytes){
+  let bin=""; for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function fromBase64Url(text){
+  let b64=String(text).replace(/-/g,"+").replace(/_/g,"/");
+  while(b64.length%4) b64+="=";
+  const bin=atob(b64), out=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i);
+  return out;
+}
+function pairLink(){
+  const conf={t:ghToken(), g:ghGist()};
+  const payload=toBase64Url(new TextEncoder().encode(JSON.stringify(conf)));
+  return location.href.split("#")[0]+"#pair="+payload;
+}
+/* 貼り付けられた文字列からトークンと Gist ID を取り出す */
+function readPair(raw){
+  const m=String(raw||"").match(/[#&]pair=([^&\s]+)/);
+  if(!m) return null;
+  try{
+    const conf=JSON.parse(new TextDecoder().decode(fromBase64Url(m[1])));
+    if(conf && String(conf.t||"").trim() && String(conf.g||"").trim())
+      return {t:String(conf.t).trim(), g:String(conf.g).trim()};
+  }catch(e){}
+  return null;
+}
+
+/* ---- 置き場を新しく作る（シークレット Gist） ---- */
+async function gistCreate(token){
+  const r = await fetch(GIST_API, {
+    method:"POST",
+    headers:{Authorization:"Bearer "+token, Accept:"application/vnd.github+json",
+             "X-GitHub-Api-Version":"2022-11-28", "Content-Type":"application/json"},
+    body: JSON.stringify({
+      description:"DAILY REPS の同期データ",
+      public:false,
+      files:{[GIST_FILE]:{content:serialize(state)}}
+    })
+  });
+  if(!r.ok) throw {code: r.status===401 || r.status===403 ? "auth" : "net", status:r.status};
+  const j = await r.json();
+  return String((j && j.id) || "").trim();
+}
 
 /* ---- 保存先：GitHub の Gist ----
    Gist には「先に書かれていたら弾く」仕組みがないので、
@@ -535,26 +640,47 @@ const SYNC = {
     /* 読み直しの仕掛けは、あとから設定を入れる場合もあるので先に付けておく
        （保存先が決まるまでは pull() が何もしない） */
     document.addEventListener("visibilitychange",()=>{
-      if(document.visibilityState==="visible") this.pull();
+      if(document.visibilityState==="visible" && ghAuto()) this.pull();
     });
-    setInterval(()=>{ if(document.visibilityState==="visible") this.pull(); }, 60000);
+    setInterval(()=>{ if(document.visibilityState==="visible" && ghAuto()) this.pull(); }, 60000);
+
+    migrateSyncKeys();
 
     if(window.claude && typeof window.claude.use === "function"){
       let ns=null;
       try{ ns = await window.claude.use("artifact"); }catch(e){}
       if(ns) this.store = artifactStore(ns);
     }
-    try{ localStorage.removeItem("dailyreps.gh.v1"); }catch(e){}   // 古い保存先の名残
-    if(!this.store && ghToken() && ghGist()) this.store = gistStore(ghToken(), ghGist());
-    if(!this.store){
-      this.show("off","同期オフ",
-        ghToken() || ghGist()
-          ? "トークンと Gist ID の両方が必要です。足りないほうを入れてください。"
-          : "この端末はまだ同期していません。トークンと Gist ID を入れると始まります。");
-      return;
+
+    /* アドレスに付いてきた「つなぐリンク」を先に受け取る */
+    if(!this.store && readPair(location.hash)){
+      const conf=readPair(location.hash);
+      lsPut(TOKEN_KEY, conf.t); lsPut(GIST_KEY, conf.g); lsPut(AUTO_KEY, "1");
+      try{ history.replaceState(null,"",location.href.split("#")[0]); }catch(e){}
     }
+
+    if(!this.store && ghReady()) this.store = gistStore(ghToken(), ghGist());
+    if(!this.store){ this.showOff(); return; }
+    if(!ghAuto()){ this.show("manual","手動","自動同期は切ってあります。「今すぐ同期する」で揃えます。"); return; }
     this.show("sync","同期を確認中","");
     await this.pull();
+  },
+
+  showOff(){
+    this.show("off","同期オフ",
+      ghToken() || ghGist()
+        ? "トークンと Gist ID の両方が必要です。足りないほうを入れてください。"
+        : "この端末はまだ同期していません。つなぐリンクを貼るか、トークンと Gist ID を入れると始まります。");
+  },
+
+  /* 設定が変わったときに、保存先を作り直して繋ぎ直す */
+  restart(){
+    this.store = ghReady() ? gistStore(ghToken(), ghGist()) : null;
+    this.sent = ""; this.dirty = false;
+    clearTimeout(this.timer);
+    if(!this.store){ this.showOff(); return; }
+    this.show("sync","同期を確認中","");
+    this.pull().then(()=>{ if(this.dirty) this.push(); });
   },
 
   /* 相手の記録を読んで、こちらと突き合わせる */
@@ -575,13 +701,18 @@ const SYNC = {
         render();
       }
       if(merged !== serialize(rem)) this.schedule(300);   // こちらにしかない分を送る
-      else { this.sent = merged; this.dirty = false; this.show("ok","同期済み","最後に確認: "+hhmm()); }
+      else {
+        this.sent = merged; this.dirty = false;
+        lsPut(LAST_KEY, String(Date.now())); lsDrop(ERR_KEY);
+        this.show("ok","同期済み","最後に確認: "+hhmm());
+      }
     }finally{ this.pulling = false; }
   },
 
   schedule(ms){
     if(!this.store) return;
     this.dirty = true;
+    if(!ghAuto() && this.store.name!=="artifact"){ this.show("manual","手動","送っていない変更があります。「今すぐ同期する」で送れます。"); return; }
     this.show("sync","同期中…","");
     clearTimeout(this.timer);
     this.timer = setTimeout(()=>this.push(), ms || 1800);
@@ -609,6 +740,7 @@ const SYNC = {
       if(body === this.sent){ this.dirty=false; this.show("ok","同期済み","最後に保存: "+hhmm()); return; }
       await this.store.save(body);
       this.sent = body; this.dirty = false;
+      lsPut(LAST_KEY, String(Date.now())); lsDrop(ERR_KEY);
       this.show("ok","同期済み","最後に保存: "+hhmm());
     }catch(err){
       this.busy = false;
@@ -621,6 +753,7 @@ const SYNC = {
   /* うまくいかなかったとき。記録は端末の中に残っているので消えない */
   trouble(err){
     const code=(err && err.code)||"net";
+    lsPut(ERR_KEY, code+" / "+hhmm());
     if(code==="auth"){
       this.store = null;
       this.show("err","同期の設定が必要",
@@ -792,59 +925,6 @@ $("#wNext").onclick=()=>{
   anchor=n; sel=n>today()?today():n; render();
 };
 $("#btnEdit").onclick=()=>{ renderEdit(); $("#sheetEdit").classList.add("on"); };
-
-/* ---- 同期の設定 ---- */
-function maskToken(t){
-  return t.length<12 ? "設定済み" : t.slice(0,7)+"…"+t.slice(-4);
-}
-function renderSyncNow(){
-  const t=ghToken(), g=ghGist();
-  $("#ghNow").innerHTML =
-    '<div><b>トークン</b>'+(t?'<span>'+maskToken(t)+'</span>':'<span class="off">未設定</span>')+'</div>'+
-    '<div><b>Gist ID</b>'+(g?'<span>'+g+'</span>':'<span class="off">未設定</span>')+'</div>';
-}
-$("#syncChip").onclick=()=>{
-  $("#syncState").textContent = SYNC.note || "";
-  /* Artifact 版は設定なしで同期できるので、設定欄は出さない */
-  $("#ghSetup").hidden = !!(window.claude && typeof window.claude.use === "function");
-  renderSyncNow();
-  $("#ghToken").value = "";
-  $("#ghGist").value  = ghGist();
-  $("#btnSyncOff").hidden = !(ghToken() || ghGist());
-  $("#btnSyncNow").hidden = !SYNC.store;   // 設定が揃う前は出さない
-  $("#sheetSync").classList.add("on");
-};
-$("#btnSyncNow").onclick=()=>{
-  if(!SYNC.store){ toast("先に同期を始めてください"); return; }
-  SYNC.pull().then(()=>SYNC.schedule(200));
-};
-$("#btnSyncSave").onclick=()=>{
-  const t = $("#ghToken").value.trim() || ghToken();
-  /* Gist の URL ごと貼られても拾えるようにする */
-  const g = ($("#ghGist").value.trim() || ghGist()).replace(/^.*\//,"").replace(/[^0-9a-zA-Z]/g,"");
-  if(!t){ toast("トークンを貼り付けてください"); return; }
-  if(!g){ toast("Gist ID を入れてください"); return; }
-  try{
-    localStorage.setItem(TOKEN_KEY, t);
-    localStorage.setItem(GIST_KEY, g);
-  }catch(e){ toast("この端末に保存できませんでした"); return; }
-  $("#ghToken").value=""; $("#ghGist").value=g;
-  $("#btnSyncOff").hidden=false; $("#btnSyncNow").hidden=false;
-  renderSyncNow();
-  SYNC.store = gistStore(t,g); SYNC.sent="";
-  SYNC.show("sync","同期を確認中","");
-  SYNC.pull().then(()=>SYNC.schedule(200));
-  toast("同期を始めました");
-};
-$("#btnSyncOff").onclick=()=>{
-  if(!confirm("この端末の同期をやめます。記録は端末に残ります。")) return;
-  try{ localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(GIST_KEY); }catch(e){}
-  SYNC.store=null; SYNC.sent="";
-  $("#ghGist").value=""; $("#btnSyncOff").hidden=true; $("#btnSyncNow").hidden=true;
-  renderSyncNow();
-  SYNC.show("off","同期オフ","この端末の同期をやめました。記録は端末に残っています。");
-  toast("同期をやめました");
-};
 $("#btnAdd").onclick=()=>{
   const name=$("#newName").value.trim();
   if(!name){ toast("名前を入れてください"); return; }
@@ -854,6 +934,125 @@ $("#btnAdd").onclick=()=>{
 };
 $$("[data-close]").forEach(b=>b.onclick=()=>$$(".sheet").forEach(s=>s.classList.remove("on")));
 $$(".sheet").forEach(s=>s.addEventListener("click",e=>{ if(e.target===s) s.classList.remove("on"); }));
+
+/* ---- 同期の設定 ---- */
+function maskToken(t){
+  return t.length<12 ? "設定済み" : t.slice(0,7)+"…"+t.slice(-4);
+}
+function renderSyncNow(){
+  const t=ghToken(), g=ghGist(), last=ls(LAST_KEY), err=ls(ERR_KEY);
+  const when = last ? new Date(+last).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}) : "";
+  $("#ghNow").innerHTML =
+    '<div><b>トークン</b>'+(t?'<span>'+maskToken(t)+'</span>':'<span class="off">未設定</span>')+'</div>'+
+    '<div><b>Gist ID</b>'+(g?'<span>'+g+'</span>':'<span class="off">未設定</span>')+'</div>'+
+    (when?'<div><b>最後の同期</b><span>'+when+'</span></div>':'')+
+    (err ?'<div><b>前回の失敗</b><span>'+err+'</span></div>':'');
+}
+$("#syncChip").onclick=()=>{
+  $("#syncState").textContent = SYNC.note || "";
+  /* Artifact 版は設定なしで同期できるので、設定欄は出さない */
+  $("#ghSetup").hidden = !!(window.claude && typeof window.claude.use === "function");
+  renderSyncNow();
+  $("#ghToken").value = "";
+  $("#ghGist").value  = ghGist();
+  $("#ghAuto").checked = ghAuto();
+  $("#pairIn").value = "";
+  $("#btnSyncOff").hidden  = !(ghToken() || ghGist());
+  $("#btnPairCopy").hidden = !ghReady();
+  $("#btnSyncNow").hidden  = !SYNC.store;
+  $("#sheetSync").classList.add("on");
+};
+$("#ghTokenEye").onclick=()=>{
+  const el=$("#ghToken");
+  el.type = el.type==="password" ? "text" : "password";
+};
+$("#ghAuto").onchange=()=>{
+  lsPut(AUTO_KEY, $("#ghAuto").checked ? "1" : "0");
+  renderSyncNow();
+  if(!ghReady()) return;
+  if($("#ghAuto").checked) SYNC.restart();
+  else SYNC.show("manual","手動","自動同期は切ってあります。「今すぐ同期する」で揃えます。");
+};
+$("#btnSyncNow").onclick=()=>{
+  if(!SYNC.store){ toast("先に同期を始めてください"); return; }
+  SYNC.pull().then(()=>SYNC.push());
+};
+
+/* 入力欄の内容を設定として取り込む（空欄はいまの値を残す） */
+function applySyncFields(){
+  const t = $("#ghToken").value.trim() || ghToken();
+  /* Gist の URL ごと貼られても拾えるようにする */
+  const g = ($("#ghGist").value.trim() || ghGist()).replace(/^.*\//,"").replace(/[^0-9a-zA-Z]/g,"");
+  if(t) lsPut(TOKEN_KEY, t);
+  if(g) lsPut(GIST_KEY, g);
+  lsPut(AUTO_KEY, $("#ghAuto").checked ? "1" : "0");
+  $("#ghToken").value=""; $("#ghGist").value=g;
+  renderSyncNow();
+  return {t,g};
+}
+
+$("#btnSyncSave").onclick=()=>{
+  const {t,g} = applySyncFields();
+  if(!t){ toast("トークンを貼り付けてください"); return; }
+  if(!g){ toast("Gist ID を入れてください"); return; }
+  $("#btnSyncOff").hidden=false; $("#btnPairCopy").hidden=false; $("#btnSyncNow").hidden=false;
+  SYNC.restart();
+  toast("同期を始めました");
+};
+
+$("#btnGistCreate").onclick=async ()=>{
+  const {t,g} = applySyncFields();
+  if(!t){ toast("先にトークンを入れてください"); return; }
+  if(g){ toast("すでに Gist ID が入っています"); return; }
+  toast("保存先を作っています…");
+  try{
+    const id = await gistCreate(t);
+    if(!id) throw {code:"net"};
+    lsPut(GIST_KEY, id); lsPut(AUTO_KEY, "1");
+    $("#ghGist").value=id; $("#ghAuto").checked=true;
+    $("#btnSyncOff").hidden=false; $("#btnPairCopy").hidden=false; $("#btnSyncNow").hidden=false;
+    renderSyncNow();
+    SYNC.restart();
+    toast("作りました。「つなぐリンクをコピー」で他の端末に渡せます");
+  }catch(err){
+    toast((err&&err.code)==="auth" ? "トークンが使えませんでした" : "作れませんでした");
+  }
+};
+
+$("#btnPairTake").onclick=()=>{
+  const conf = readPair($("#pairIn").value);
+  if(!conf){ toast("つなぐリンクを貼り付けてください"); return; }
+  lsPut(TOKEN_KEY, conf.t); lsPut(GIST_KEY, conf.g); lsPut(AUTO_KEY, "1");
+  $("#pairIn").value=""; $("#ghToken").value=""; $("#ghGist").value=conf.g; $("#ghAuto").checked=true;
+  $("#btnSyncOff").hidden=false; $("#btnPairCopy").hidden=false; $("#btnSyncNow").hidden=false;
+  renderSyncNow();
+  SYNC.restart();
+  toast("つながりました。いま揃えています…");
+};
+
+$("#btnPairCopy").onclick=async ()=>{
+  if(!ghReady()){ toast("先に設定してください"); return; }
+  const url = pairLink();
+  try{
+    await navigator.clipboard.writeText(url);
+    toast("コピーしました。もう片方の端末に貼ってください");
+  }catch(e){
+    $("#pairIn").value = url;
+    $("#pairIn").select();
+    toast("上の欄に出しました。長押しでコピーしてください");
+  }
+};
+
+$("#btnSyncOff").onclick=()=>{
+  if(!confirm("この端末の同期をやめます。記録は端末に残ります。")) return;
+  lsDrop(TOKEN_KEY); lsDrop(GIST_KEY); lsDrop(LAST_KEY); lsDrop(ERR_KEY);
+  SYNC.store=null; SYNC.sent="";
+  $("#ghGist").value=""; $("#pairIn").value="";
+  $("#btnSyncOff").hidden=true; $("#btnPairCopy").hidden=true; $("#btnSyncNow").hidden=true;
+  renderSyncNow();
+  SYNC.show("off","同期オフ","この端末の同期をやめました。記録は端末に残っています。");
+  toast("同期をやめました");
+};
 
 $("#btnClear").onclick=()=>{
   if(!doneOf(sel).length){ toast("チェックはありません"); return; }
