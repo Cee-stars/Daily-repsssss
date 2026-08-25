@@ -530,6 +530,10 @@ function fromBase64Url(text){
    https://gist.github.com/Cee-stars/9f2b…#file-daily-reps-json → 9f2b… */
 function readGistId(v){
   let t = String(v||"").trim();
+  /* Gist ID は長い16進の塊。URL でも、GitHub の Embed に出る
+     script タグごとでも、そこだけ抜き出す */
+  const hex = t.match(/[0-9a-f]{20,}/i);
+  if(hex) return hex[0];
   t = t.split("#")[0].split("?")[0];   // 目印や検索文字を落とす
   t = t.replace(/\/+$/,"");            // 末尾の / を落とす
   t = t.replace(/^.*\//,"");           // 最後の / より後ろだけ
