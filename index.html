@@ -526,6 +526,16 @@ function fromBase64Url(text){
   for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i);
   return out;
 }
+/* Gist ID の取り出し。ID そのものでも、URL ごとでも受け取る。
+   https://gist.github.com/Cee-stars/9f2b…#file-daily-reps-json → 9f2b… */
+function readGistId(v){
+  let t = String(v||"").trim();
+  t = t.split("#")[0].split("?")[0];   // 目印や検索文字を落とす
+  t = t.replace(/\/+$/,"");            // 末尾の / を落とす
+  t = t.replace(/^.*\//,"");           // 最後の / より後ろだけ
+  return t.replace(/[^0-9a-zA-Z]/g,"");
+}
+
 function pairLink(){
   const conf={t:ghToken(), g:ghGist()};
   const payload=toBase64Url(new TextEncoder().encode(JSON.stringify(conf)));
@@ -982,7 +992,7 @@ $("#btnSyncNow").onclick=()=>{
 function applySyncFields(){
   const t = $("#ghToken").value.trim() || ghToken();
   /* Gist の URL ごと貼られても拾えるようにする */
-  const g = ($("#ghGist").value.trim() || ghGist()).replace(/^.*\//,"").replace(/[^0-9a-zA-Z]/g,"");
+  const g = readGistId($("#ghGist").value) || ghGist();
   if(t) lsPut(TOKEN_KEY, t);
   if(g) lsPut(GIST_KEY, g);
   lsPut(AUTO_KEY, $("#ghAuto").checked ? "1" : "0");
