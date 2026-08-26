@@ -286,7 +286,10 @@ button{background:none;border:0;cursor:pointer}
       <label for="ghGist">Gist ID</label>
       <input id="ghGist" type="text" inputmode="text" autocomplete="off"
              autocapitalize="off" spellcheck="false" placeholder="URL の最後の英数字">
-      <div class="hint">瞬間英作文と同じ Gist ID を入れると、1枚の Gist に同居します。</div>
+      <div class="hint">
+        <b>空のままで構いません。</b>トークンだけで「同期を始める」を押すと、
+        瞬間英作文と同じ Gist を自分で見つけます（無ければ作ります）。
+      </div>
     </div>
 
     <button class="ghost" id="btnGistCreate">同期用の保存先を新規作成</button>
@@ -530,6 +533,7 @@ function fromBase64Url(text){
    https://gist.github.com/Cee-stars/9f2b…#file-daily-reps-json → 9f2b… */
 function readGistId(v){
   let t = String(v||"").trim();
+  if(!/[\/#?<>\s]/.test(t)) return t;   // すでに ID そのもの
   /* Gist ID は長い16進の塊。URL でも、GitHub の Embed に出る
      script タグごとでも、そこだけ抜き出す */
   const hex = t.match(/[0-9a-f]{20,}/i);
@@ -555,6 +559,38 @@ function readPair(raw){
       return {t:String(conf.t).trim(), g:String(conf.g).trim()};
   }catch(e){}
   return null;
+}
+
+/* ---- 置き場を自分で探す ----
+   トークンさえあれば Gist ID を打ち込まなくていい。
+   このアプリのぶんがある Gist → 瞬間英作文や My Dictionary の Gist → 無ければ作る、の順。 */
+const FAMILY = ["sunkan-data.json","mydict-data.json"];   // 同居させたい相手
+
+async function gistFind(token){
+  const r = await fetch(GIST_API+"?per_page=100&t="+Date.now(), {
+    headers:{Authorization:"Bearer "+token, Accept:"application/vnd.github+json",
+             "X-GitHub-Api-Version":"2022-11-28"}, cache:"no-store"});
+  if(!r.ok) throw {code: r.status===401 || r.status===403 ? "auth" : "net", status:r.status};
+  const list = await r.json();
+  if(!Array.isArray(list)) return "";
+  const has = (g,name) => !!(g && g.files && g.files[name]);
+  const mine = list.find(g=>has(g,GIST_FILE));
+  if(mine) return String(mine.id||"");
+  for(const name of FAMILY){
+    const g = list.find(x=>has(x,name));
+    if(g) return String(g.id||"");
+  }
+  return "";
+}
+
+/* 置き場を用意する。make が真のときだけ、見つからなければ作る。
+   起動時に作らないのは、同じトークンの端末が同時に立ち上がると
+   置き場が2つできて記録が分かれてしまうため。 */
+async function gistEnsure(token, make){
+  const found = await gistFind(token);
+  if(found) return {id:found, made:false};
+  if(!make) return {id:"", made:false};
+  return {id: await gistCreate(token), made:true};
 }
 
 /* ---- 置き場を新しく作る（シークレット Gist） ---- */
@@ -673,6 +709,17 @@ const SYNC = {
       try{ history.replaceState(null,"",location.href.split("#")[0]); }catch(e){}
     }
 
+    if(!this.store && ghToken() && !ghGist()){
+      this.show("sync","置き場を探しています","");
+      try{
+        const got = await gistEnsure(ghToken(), false);   // 起動時は探すだけ
+        if(got.id) lsPut(GIST_KEY, got.id);
+        else{
+          this.show("off","同期オフ","トークンは入っていますが、置き場が見つかりません。設定の「同期を始める」を押すと作ります。");
+          return;
+        }
+      }catch(err){ this.trouble(err); return; }
+    }
     if(!this.store && ghReady()) this.store = gistStore(ghToken(), ghGist());
     if(!this.store){ this.showOff(); return; }
     if(!ghAuto()){ this.show("manual","手動","自動同期は切ってあります。「今すぐ同期する」で揃えます。"); return; }
@@ -1005,13 +1052,29 @@ function applySyncFields(){
   return {t,g};
 }
 
-$("#btnSyncSave").onclick=()=>{
+$("#btnSyncSave").onclick=async ()=>{
   const {t,g} = applySyncFields();
   if(!t){ toast("トークンを貼り付けてください"); return; }
-  if(!g){ toast("Gist ID を入れてください"); return; }
+  let id = g;
+  if(!id){
+    /* Gist ID が空なら、こちらで探す。無ければ作る */
+    toast("置き場を探しています…");
+    try{
+      const got = await gistEnsure(t, true);   // 押されたときは作ってよい
+      id = got.id;
+      if(!id) throw {code:"net"};
+      lsPut(GIST_KEY, id);
+      $("#ghGist").value = id;
+      renderSyncNow();
+      toast(got.made ? "置き場を作りました" : "置き場が見つかりました");
+    }catch(err){
+      toast((err&&err.code)==="auth" ? "トークンが使えませんでした" : "置き場を用意できませんでした");
+      return;
+    }
+  }
+  lsPut(AUTO_KEY, $("#ghAuto").checked ? "1" : "0");
   $("#btnSyncOff").hidden=false; $("#btnPairCopy").hidden=false; $("#btnSyncNow").hidden=false;
   SYNC.restart();
-  toast("同期を始めました");
 };
 
 $("#btnGistCreate").onclick=async ()=>{

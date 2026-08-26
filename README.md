@@ -39,10 +39,17 @@
 
 `#pair=` 付きの URL で開いた場合も、その場で受け取ってアドレスから消します。
 
-**はじめて作る場合**は、[トークン](https://github.com/settings/tokens/new?scopes=gist)を
-scope `gist` だけで作り、同期チップ →「同期用の保存先を新規作成」。
-シークレット Gist ができて、Gist ID が自動で入ります。
-そのあと「つなぐリンクをコピー」で、ほかの端末やアプリに渡せます。
+**Gist ID は入れなくても構いません。** トークンだけで「同期を始める」を押すと、
+アプリがアカウントの Gist を見て置き場を決めます。
+
+1. `daily-reps.json` がある Gist（＝前に使っていた置き場）
+2. `sunkan-data.json` / `mydict-data.json` がある Gist（＝瞬間英作文と同居）
+3. どちらも無ければ、シークレット Gist を新しく作る
+
+起動時は 1 と 2 を探すだけで、**作りません**。同じトークンの端末が同時に立ち上がると
+置き場が2つできて記録が分かれるためです。作るのは「同期を始める」を押したときだけです。
+
+[トークン](https://github.com/settings/tokens/new?scopes=gist)は scope `gist` だけで作ります。
 
 トークンと Gist ID はその端末の `localStorage` にだけ残り、リポジトリには入りません。
 
