@@ -44,12 +44,17 @@ button{background:none;border:0;cursor:pointer}
 :focus-visible{outline:3px solid var(--c-listening);outline-offset:2px}
 
 /* ---- ヘッダー ---- */
-.top{display:flex;align-items:center;gap:10px;margin-bottom:16px}
-.top h1{margin:0;font-family:var(--display);font-size:23px;font-weight:900;letter-spacing:.05em}
-.spacer{flex:1}
+.top{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+/* 幅の狭い端末でも1行に収める。タイトルだけが縮む */
+.top h1{
+  margin:0;font-family:var(--display);font-weight:900;letter-spacing:.05em;
+  font-size:clamp(17px,5.4vw,23px);white-space:nowrap;min-width:0;flex:0 1 auto;
+}
+.spacer{flex:1 1 auto;min-width:0}
 .streak{
   display:flex;align-items:baseline;gap:5px;background:#FFF3E8;color:#C4500A;
-  padding:8px 14px;border-radius:999px;font-weight:800;
+  padding:8px 13px;border-radius:999px;font-weight:800;
+  white-space:nowrap;flex:none;
 }
 .streak b{font-family:var(--mono);font-size:18px}
 .streak small{font-size:11px}
@@ -130,10 +135,11 @@ button{background:none;border:0;cursor:pointer}
 /* ---- 同期チップ ---- */
 .sync{
   display:inline-flex;align-items:center;gap:6px;
-  padding:7px 12px;border-radius:999px;font-size:11px;font-weight:800;
+  padding:7px 11px;border-radius:999px;font-size:11px;font-weight:800;
   background:#EEF1F8;color:var(--dim);border:1px solid var(--line);
+  white-space:nowrap;flex:none;
 }
-.sync::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.sync::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
 .sync[data-mode="ok"]{background:#E6F7F1;color:#00754F;border-color:#C9EDE0}
 .sync[data-mode="sync"]{background:#E6F6FD;color:#0077A3;border-color:#C8E9F8}
 .sync[data-mode="local"]{background:#EEF1F8;color:var(--dim)}
