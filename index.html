@@ -155,7 +155,7 @@ button{background:none;border:0;cursor:pointer}
   max-width:640px;margin-inline:auto;
 }
 .inner h3{margin:0 0 4px;font-family:var(--display);font-size:19px;font-weight:900}
-.inner .sub{font-size:12.5px;color:var(--dim);line-height:1.7;margin-bottom:16px}
+.inner .sub{font-size:12.5px;color:var(--dim);line-height:1.7;margin-bottom:16px;white-space:pre-wrap}
 .now{
   background:var(--card);border:1px solid var(--line);border-radius:14px;
   padding:12px 14px;margin-top:18px;display:grid;gap:7px;
@@ -284,7 +284,9 @@ button{background:none;border:0;cursor:pointer}
       </div>
       <div class="hint">
         <a href="https://github.com/settings/tokens/new?scopes=gist&description=DAILY%20REPS" target="_blank" rel="noopener">作成ページ</a>
-        で scope の <b>gist</b> だけにチェックを入れて作ります。
+        で scope の <b>gist</b> にチェックを入れて作ります。
+        <b>classic（<code>ghp_</code> で始まるもの）</b>が必要です。
+        fine-grained（<code>github_pat_</code>）は Gist に対応していません。
       </div>
     </div>
 
@@ -299,6 +301,7 @@ button{background:none;border:0;cursor:pointer}
     </div>
 
     <button class="ghost" id="btnGistCreate">同期用の保存先を新規作成</button>
+    <button class="ghost" id="btnSyncCheck">つながるか調べる</button>
 
     <label class="switch">
       <input type="checkbox" id="ghAuto" checked>
@@ -567,17 +570,62 @@ function readPair(raw){
   return null;
 }
 
+/* ---- GitHub への通信 ----
+   ヘッダーは、実機で動いている瞬間英作文と同じ2つだけにする。
+   これ以外のヘッダー（X-GitHub-Api-Version など）を足すと、ブラウザが
+   事前確認（プリフライト）を挟み、許可されていなければ送信前に失敗する。 */
+function withTimeout(pr, ms){
+  return new Promise((ok,ng)=>{
+    const id=setTimeout(()=>ng(new Error("時間切れ")), ms);
+    pr.then(v=>{clearTimeout(id); ok(v);}, e=>{clearTimeout(id); ng(e);});
+  });
+}
+
+/* GitHub が返した理由を、そのまま人の言葉にする */
+function ghError(status, msg, token){
+  const fine = /^github_pat_/.test(token||"");
+  if(status===401) return {code:"auth", status,
+    message:"トークンが使えません。期限切れか、貼り間違いのようです。"};
+  if(status===403) return {code:"auth", status,
+    message: fine
+      ? "このトークンでは Gist を触れません。fine-grained（github_pat_…）は Gist に対応していないので、classic トークン（ghp_…）を scope「gist」で作り直してください。"
+      : "権限が足りません。トークンの scope に「gist」が入っているか確かめてください。"};
+  if(status===404) return {code:"auth", status, missing:true,
+    message: fine
+      ? "置き場が見つかりません。fine-grained トークン（github_pat_…）は Gist に対応していません。classic トークン（ghp_…）を scope「gist」で作り直してください。"
+      : "置き場が見つかりません。Gist ID の綴りと、トークンの scope「gist」を確かめてください。"};
+  return {code:"net", status, message:"GitHub が "+status+" を返しました。"+(msg?"（"+msg+"）":"")};
+}
+
+async function ghFetch(url, method, token, body){
+  const opts = {
+    method: method,
+    headers: {"Authorization":"token "+token, "Accept":"application/vnd.github+json"},
+    cache: "no-store"
+  };
+  if(body){ opts.headers["Content-Type"]="application/json"; opts.body=body; }
+  let res;
+  try{
+    res = await withTimeout(fetch(url, opts), 20000);
+  }catch(e){
+    /* ここで「オフラインかも」と決めつけると本当の理由が消える */
+    throw {code:"net", message:"GitHub に届きませんでした（"+((e && e.message)||"理由不明")+"）"};
+  }
+  if(res.ok) return res.json();
+  let msg="";
+  try{ const j=await res.json(); msg=(j && j.message) || ""; }catch(e){}
+  if(res.status===403 && res.headers.get("x-ratelimit-remaining")==="0")
+    throw {code:"rate", status:403, message:"GitHub の回数制限に当たりました。しばらくして再開します。"};
+  throw ghError(res.status, msg, token);
+}
+
 /* ---- 置き場を自分で探す ----
    トークンさえあれば Gist ID を打ち込まなくていい。
    このアプリのぶんがある Gist → 瞬間英作文や My Dictionary の Gist → 無ければ作る、の順。 */
 const FAMILY = ["sunkan-data.json","mydict-data.json"];   // 同居させたい相手
 
 async function gistFind(token){
-  const r = await fetch(GIST_API+"?per_page=100&t="+Date.now(), {
-    headers:{Authorization:"Bearer "+token, Accept:"application/vnd.github+json",
-             "X-GitHub-Api-Version":"2022-11-28"}, cache:"no-store"});
-  if(!r.ok) throw {code: r.status===401 || r.status===403 ? "auth" : "net", status:r.status};
-  const list = await r.json();
+  const list = await ghFetch(GIST_API+"?per_page=100", "GET", token);
   if(!Array.isArray(list)) return "";
   const has = (g,name) => !!(g && g.files && g.files[name]);
   const mine = list.find(g=>has(g,GIST_FILE));
@@ -601,18 +649,11 @@ async function gistEnsure(token, make){
 
 /* ---- 置き場を新しく作る（シークレット Gist） ---- */
 async function gistCreate(token){
-  const r = await fetch(GIST_API, {
-    method:"POST",
-    headers:{Authorization:"Bearer "+token, Accept:"application/vnd.github+json",
-             "X-GitHub-Api-Version":"2022-11-28", "Content-Type":"application/json"},
-    body: JSON.stringify({
-      description:"DAILY REPS の同期データ",
-      public:false,
-      files:{[GIST_FILE]:{content:serialize(state)}}
-    })
-  });
-  if(!r.ok) throw {code: r.status===401 || r.status===403 ? "auth" : "net", status:r.status};
-  const j = await r.json();
+  const j = await ghFetch(GIST_API, "POST", token, JSON.stringify({
+    description:"DAILY REPS の同期データ",
+    public:false,
+    files:{[GIST_FILE]:{content:serialize(state)}}
+  }));
   return String((j && j.id) || "").trim();
 }
 
@@ -620,25 +661,12 @@ async function gistCreate(token){
    Gist には「先に書かれていたら弾く」仕組みがないので、
    書く直前に必ず読み直して突き合わせる（mergeBeforeSave）。 */
 function gistStore(token, id){
-  const url = "https://api.github.com/gists/"+id;
-  const head = {
-    "Authorization":"Bearer "+token,
-    "Accept":"application/vnd.github+json",
-    "X-GitHub-Api-Version":"2022-11-28"
-  };
-  const fail = r => {
-    if(r.status===401) return {code:"auth"};
-    if(r.status===403) return {code: r.headers.get("x-ratelimit-remaining")==="0" ? "rate" : "auth"};
-    if(r.status===404) return {code:"auth", missing:true};
-    return {code:"net", status:r.status};
-  };
+  const url = GIST_API+"/"+encodeURIComponent(id);
   return {
     name:"gist",
     mergeBeforeSave:true,
     async load(){
-      const r = await fetch(url+"?t="+Date.now(), {headers:head, cache:"no-store"});
-      if(!r.ok) throw fail(r);
-      const j = await r.json();
+      const j = await ghFetch(url, "GET", token);
       const f = j.files && j.files[GIST_FILE];
       if(!f) return null;                       // まだファイルがない
       let text = f.content || "";
@@ -648,12 +676,7 @@ function gistStore(token, id){
       try{ return JSON.parse(text); }catch(e){ return null; }
     },
     async save(body){
-      const r = await fetch(url, {
-        method:"PATCH",
-        headers:{...head,"Content-Type":"application/json"},
-        body: JSON.stringify({files:{[GIST_FILE]:{content:body}}})
-      });
-      if(!r.ok) throw fail(r);
+      await ghFetch(url, "PATCH", token, JSON.stringify({files:{[GIST_FILE]:{content:body}}}));
     }
   };
 }
@@ -820,18 +843,17 @@ const SYNC = {
   /* うまくいかなかったとき。記録は端末の中に残っているので消えない */
   trouble(err){
     const code=(err && err.code)||"net";
-    lsPut(ERR_KEY, code+" / "+hhmm());
+    const why=(err && err.message) || "";
+    lsPut(ERR_KEY, hhmm()+" "+(why || code));
     if(code==="auth"){
       this.store = null;
-      this.show("err","同期の設定が必要",
-        err && err.missing
-          ? "その Gist が見つかりません。Gist ID の綴りと、トークンに gist の権限があるかを確かめてください。"
-          : "トークンが使えませんでした。期限切れか、権限が足りていないようです。入れ直してください。");
+      this.show("err","同期の設定が必要", why || "トークンを入れ直してください。");
       return;
     }
-    if(code==="rate"){ this.show("err","少し待ちます","GitHub の回数制限に当たりました。しばらくして再開します。"); this.schedule(120000); return; }
+    if(code==="rate"){ this.show("err","少し待ちます", why||"GitHub の回数制限に当たりました。"); this.schedule(120000); return; }
     if(code==="size"){ this.show("err","記録が大きすぎます","記録が保存できる大きさを超えました。"); return; }
-    this.show("err","同期できません","通信に失敗しました。記録はこの端末に残っています。20秒後にもう一度試します。");
+    this.show("err","同期できません",
+      (why || "通信に失敗しました。")+" 記録はこの端末に残っています。20秒後にもう一度試します。");
     this.schedule(20000);
   }
 };
@@ -1081,6 +1103,53 @@ $("#btnSyncSave").onclick=async ()=>{
   lsPut(AUTO_KEY, $("#ghAuto").checked ? "1" : "0");
   $("#btnSyncOff").hidden=false; $("#btnPairCopy").hidden=false; $("#btnSyncNow").hidden=false;
   SYNC.restart();
+};
+
+/* どこで止まっているのかを順に確かめて、そのまま画面に出す */
+$("#btnSyncCheck").onclick=async ()=>{
+  const out=[];
+  const say=()=>{ $("#syncState").textContent = out.join("\n"); };
+  const t = $("#ghToken").value.trim() || ghToken();
+  const g = readGistId($("#ghGist").value) || ghGist();
+
+  if(!t){ out.push("トークンが入っていません。"); say(); return; }
+  out.push(/^github_pat_/.test(t)
+    ? "⚠ fine-grained トークン（github_pat_…）です。Gist には使えません。classic（ghp_…）を scope「gist」で作り直してください。"
+    : "トークン: 形は問題なさそうです。");
+  say();
+
+  out.push("GitHub に問い合わせています…"); say();
+  try{
+    const list = await ghFetch(GIST_API+"?per_page=100", "GET", t);
+    out.pop();
+    out.push("GitHub に届きました。Gist は "+(Array.isArray(list)?list.length:0)+" 件見えています。");
+    const has=(x,n)=>!!(x && x.files && x.files[n]);
+    const mine=(list||[]).find(x=>has(x,GIST_FILE));
+    const fam=(list||[]).find(x=>FAMILY.some(n=>has(x,n)));
+    if(mine) out.push("このアプリの置き場（"+GIST_FILE+"）が見つかりました: "+mine.id);
+    else if(fam) out.push("瞬間英作文などの Gist が見つかりました: "+fam.id+"（ここに同居できます）");
+    else out.push("置き場はまだありません。「同期を始める」を押すと作ります。");
+  }catch(err){
+    out.pop();
+    out.push("✗ "+((err && err.message) || "うまくいきませんでした。"));
+    say(); return;
+  }
+  say();
+
+  if(g){
+    out.push("設定してある置き場 "+g+" を見ています…"); say();
+    try{
+      const j = await ghFetch(GIST_API+"/"+encodeURIComponent(g), "GET", t);
+      out.pop();
+      out.push((j.files && j.files[GIST_FILE])
+        ? "その置き場に記録があります。同期できる状態です。"
+        : "その置き場は開けましたが、まだ記録はありません（最初の同期で作られます）。");
+    }catch(err){
+      out.pop();
+      out.push("✗ "+((err && err.message) || "その置き場を開けませんでした。"));
+    }
+  }
+  say();
 };
 
 $("#btnGistCreate").onclick=async ()=>{

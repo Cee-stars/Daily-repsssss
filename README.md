@@ -49,7 +49,18 @@
 起動時は 1 と 2 を探すだけで、**作りません**。同じトークンの端末が同時に立ち上がると
 置き場が2つできて記録が分かれるためです。作るのは「同期を始める」を押したときだけです。
 
-[トークン](https://github.com/settings/tokens/new?scopes=gist)は scope `gist` だけで作ります。
+[トークン](https://github.com/settings/tokens/new?scopes=gist)は scope `gist` で作ります。
+**classic（`ghp_` で始まるもの）が必要です。** fine-grained（`github_pat_`）は Gist API に対応していません。
+
+うまくいかないときは、同期チップ →「つながるか調べる」。
+トークンの種類・GitHub に届いたか・置き場が見えるかを順に確かめて、失敗した理由をそのまま出します。
+
+### GitHub への通信で気をつけること
+
+リクエストに載せるヘッダーは **`Authorization: token …` と `Accept: application/vnd.github+json` の2つだけ**
+（書き込みのときは `Content-Type` も）。`X-GitHub-Api-Version` のような追加のヘッダーを足すと、
+ブラウザが事前確認（プリフライト）を挟み、許可されていなければ**送信前に失敗**します。
+瞬間英作文の `sync.js` も同じ2つだけです。テスト（`headers` の確認）でこれを見張っています。
 
 トークンと Gist ID はその端末の `localStorage` にだけ残り、リポジトリには入りません。
 
