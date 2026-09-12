@@ -354,7 +354,7 @@ const DEFAULT_TASKS = [
 
   {id:"sunkan",    cat:"speaking",  name:"瞬間英作文",                                 core:true,  dayType:"off"},
   {id:"r432",      cat:"speaking",  name:"4/3/2 感想1本",                              core:false, dayType:"off"},
-  {id:"qa",        cat:"speaking",  name:"質問応答",                                   core:false, dayType:"off"},
+  {id:"qa",        cat:"speaking",  name:"質問応答（週2〜3）",                          core:false, dayType:"off"},
   {id:"queue",     cat:"speaking",  name:"復習キュー",                                 core:true,  dayType:"both"},
   {id:"queueRead", cat:"speaking",  name:"復習キュー：フレーズ3つ音読（レッスン前）",     core:false, dayType:"lesson"},
   {id:"rephrase",  cat:"speaking",  name:"言えなかったフレーズを3通りで英語化 ×2",       core:true,  dayType:"lesson"},
@@ -367,8 +367,10 @@ const DEFAULT_TASKS = [
 
 /* この版で一覧を入れ替えた時刻。これより古い記録は、タスクだけを上の一覧に差し替える。
    チェックの記録（log / marks / cleared）には触れないので、これまでの記録は残る。
-   入れ替えた後は tasksAt がこの時刻になるので、二度は走らない。 */
-const TASKS_AT = 1789217670569;   // 2026-09-12T12:54:30Z
+   入れ替えた後は tasksAt がこの時刻になるので、二度は走らない。
+   上の一覧を直したときは、この時刻も今に更新すること。そうしないと、
+   すでに入れ替えを済ませた端末に直した内容が届かない。 */
+const TASKS_AT = 1789218100000;   // 2026-09-12T13:01:40Z
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
