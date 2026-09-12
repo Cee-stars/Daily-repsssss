@@ -83,6 +83,8 @@
 
 記録の形は `index.html` の `normalize` / `mergeState` / `serialize` が全てです。
 古い形（日ごとに1つの時刻を持つ v3、`meta` のない v2）も読めます。
+v5 でタスクに `dayType`（`lesson` / `off` / `both`）が加わりました。
+持っていない記録は `normalize` が `both` に寄せるので、古い記録もそのまま読めます。
 
 ### `data` ブランチについて
 

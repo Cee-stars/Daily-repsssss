@@ -67,6 +67,9 @@ button{background:none;border:0;cursor:pointer}
   background:var(--card);border-radius:22px;padding:20px;border:1px solid var(--line);
   box-shadow:0 6px 20px rgba(21,26,36,.05);margin-bottom:14px;
 }
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px}
+.seg button{padding:9px 6px;border-radius:12px;background:#F0F3F9;color:var(--dim);font-weight:800;font-size:13px}
+.seg button[data-on="1"]{background:#FFF3E8;color:var(--accent)}
 .hero .date{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:.06em}
 .hero .msg{font-family:var(--display);font-size:20px;font-weight:900;margin-top:6px;line-height:1.35}
 .big{display:flex;align-items:baseline;gap:8px;margin-top:12px}
@@ -181,10 +184,10 @@ button{background:none;border:0;cursor:pointer}
 .switch input{width:22px;height:22px;flex:none;accent-color:var(--accent)}
 .sync[data-mode="manual"]{background:#F0F3F9;color:var(--dim)}
 .erow{
-  display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);
+  display:flex;flex-wrap:wrap;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);
   border-radius:14px;padding:9px 10px;margin-bottom:8px;
 }
-.erow .en{flex:1;border:0;background:none;font-size:15px;font-weight:700;min-width:0;padding:5px 2px}
+.erow .en{flex:1 1 140px;border:0;background:none;font-size:15px;font-weight:700;min-width:0;padding:5px 2px}
 .erow select{border:0;background:#F0F3F9;border-radius:9px;padding:8px;font-size:12.5px;font-weight:700}
 .erow .st{width:38px;height:38px;border-radius:11px;background:#F0F3F9;font-size:15px}
 .erow .st[data-on="1"]{background:#FFF3E8;color:var(--accent)}
@@ -217,6 +220,10 @@ button{background:none;border:0;cursor:pointer}
 </div>
 
 <section class="hero">
+  <div class="seg" id="daySeg">
+    <button type="button" data-mode="lesson">レッスン日</button>
+    <button type="button" data-mode="off">レッスンなし日</button>
+  </div>
   <div class="date" id="dateLine"></div>
   <div class="msg" id="msg"></div>
   <div class="big"><span class="n" id="doneN">0</span><span class="d" id="allN">/ 0</span><span class="u">レップ</span></div>
@@ -333,6 +340,15 @@ const CATS = [
 ];
 const C = Object.fromEntries(CATS.map(c=>[c.id,c]));
 
+/* ---- 日タイプ ----
+   lesson … レッスンがある日   off … レッスンがない日   both … どちらの日にも出す */
+const DAY_TYPES = [
+  {id:"both",   jp:"両方"},
+  {id:"lesson", jp:"レッスン日"},
+  {id:"off",    jp:"レッスンなし日"}
+];
+const DAYTYPE_IDS = DAY_TYPES.map(d=>d.id);
+
 const DEFAULT_TASKS = [
   {id:"t1",  cat:"listening",  name:"Duo",                 core:true},
   {id:"t2",  cat:"speaking",   name:"4/3/2",               core:true},
@@ -358,6 +374,7 @@ const GIST_KEY  = "dailyreps:sync:gistId";
 const AUTO_KEY  = "dailyreps:sync:auto";
 const LAST_KEY  = "dailyreps:sync:last";
 const ERR_KEY   = "dailyreps:sync:error";   // 黙って止まらないよう、最後の失敗を残す
+const DAYTYPE_KEY = "dailyreps:daytype";    // いま見ている日タイプ。端末ごとの見せ方で、記録ではない
 const GIST_FILE = "daily-reps.json";
 const GIST_API  = "https://api.github.com/gists";
 const $ = s=>document.querySelector(s);
@@ -366,6 +383,7 @@ const $$ = s=>[...document.querySelectorAll(s)];
 let state = load();
 let anchor = today();      // 週表示の基準日
 let sel = today();         // いま見ている日
+let dayMode = ls(DAYTYPE_KEY)==="lesson" ? "lesson" : "off";   // 日タイプの切り替え（既定はレッスンなし日）
 
 function today(){ return ymd(new Date()); }
 function ymd(d){
@@ -377,10 +395,15 @@ function addDays(s,n){ const d=new Date(s+"T00:00:00"); d.setDate(d.getDate()+n)
    meta.marks[日付][タスク] は「そのチェックを最後に切り替えた時刻」。
    meta.cleared[日付] は「その日をまとめて消した時刻」。
    端末どうしを突き合わせるとき、チェック1つずつで新しいほうを残すために使う。 */
+/* タスク1件の形をそろえる。dayType の無い／読めない記録は「両方」に寄せる（v4 → v5） */
+function normTask(t){
+  return {...t, dayType: DAYTYPE_IDS.includes(t.dayType) ? t.dayType : "both"};
+}
+
 function normalize(s){
   const ok = s && Array.isArray(s.tasks) && s.tasks.length;
   const out = {
-    tasks: ok ? s.tasks.map(t=>({...t})) : DEFAULT_TASKS.map(t=>({...t})),
+    tasks: (ok ? s.tasks : DEFAULT_TASKS).map(normTask),
     log:   {},
     meta:  {tasksAt:0, marks:{}, cleared:{}}
   };
@@ -458,7 +481,7 @@ function serialize(s){
     const o={}; Object.keys(s.meta.marks[d]).sort().forEach(id=>o[id]=s.meta.marks[d][id]); marks[d]=o;
   });
   Object.keys(s.meta.cleared).sort().forEach(d=>cleared[d]=s.meta.cleared[d]);
-  return JSON.stringify({v:4, tasks:s.tasks, log, meta:{tasksAt:s.meta.tasksAt, marks, cleared}});
+  return JSON.stringify({v:5, tasks:s.tasks, log, meta:{tasksAt:s.meta.tasksAt, marks, cleared}});
 }
 
 function load(){
@@ -869,6 +892,32 @@ function hhmm(){
 const doneOf = d => state.log[d] || [];
 const isDone = (d,id) => doneOf(d).includes(id);
 
+/* ---- 日タイプで絞る ----
+   いま画面に出すタスク。'both' はどちらの日にも出す。 */
+const visibleTasks = () => state.tasks.filter(t => t.dayType==="both" || t.dayType===dayMode);
+
+/* その日がどちらの日だったかを、付いているチェックから推し量る。
+   記録に新しく持つものは増やさない。読み取れない日は判定せず、
+   これまでどおり全タスクで数える。過去の達成率を後から動かさないため、
+   dayMode を見るのは「今日」かつ読み取れないときだけにする。 */
+function dayTypeOf(d){
+  const type = new Map(state.tasks.map(t=>[t.id, t.dayType]));
+  let nL=0, nO=0;
+  (state.log[d] || []).forEach(id=>{
+    const dt = type.get(id);          // 消したタスクの記録はどちらにも数えない
+    if(dt==="lesson") nL++; else if(dt==="off") nO++;
+  });
+  if(nL>nO) return "lesson";
+  if(nO>nL) return "off";
+  return d===today() ? dayMode : null;
+}
+
+/* その日に数えるタスクの集合（読み取れない日は全タスク） */
+function tasksFor(d){
+  const t = dayTypeOf(d);
+  return t ? state.tasks.filter(x => x.dayType===t || x.dayType==="both") : state.tasks;
+}
+
 function toggle(id){
   const arr = doneOf(sel).slice();
   const i = arr.indexOf(id);
@@ -879,7 +928,7 @@ function toggle(id){
 
 /* ---- 連続日数：コア習慣を全部やった日が続いた数 ---- */
 function coreDone(d){
-  const core = state.tasks.filter(t=>t.core);
+  const core = tasksFor(d).filter(t=>t.core);
   if(!core.length) return doneOf(d).length>0;
   return core.every(t=>isDone(d,t.id));
 }
@@ -892,7 +941,7 @@ function streak(){
 
 /* ---- 描画 ---- */
 function render(){
-  const tasks=state.tasks;
+  const tasks=visibleTasks();
   const done=doneOf(sel);
   const dn=tasks.filter(t=>done.includes(t.id)).length;
 
@@ -901,7 +950,8 @@ function render(){
   $("#dateLine").textContent =
     (sel===today()?"TODAY · ":"") + (dt.getMonth()+1)+"月"+dt.getDate()+"日（"+wd+"）";
   $("#msg").textContent =
-    tasks.length===0 ? "タスクを追加しよう" :
+    state.tasks.length===0 ? "タスクを追加しよう" :
+    tasks.length===0 ? "この日タイプに出すタスクはありません" :
     dn===0 ? "今日のぶん、はじめよう" :
     dn===tasks.length ? "全部やりきった。おつかれさま。" :
     "あと "+(tasks.length-dn)+" レップ";
@@ -921,19 +971,21 @@ function render(){
   const cd=core.filter(t=>done.includes(t.id)).length;
   $("#coreLine").innerHTML = core.length ? "★ コア習慣 <b>"+cd+"/"+core.length+"</b>" : "";
 
+  renderDayMode();
   renderWeek();
   renderTasks();
 }
 
 function renderWeek(){
   const el=$("#days"); el.innerHTML="";
-  const total=state.tasks.length||1;
   for(let i=6;i>=0;i--){
     const d=addDays(anchor,-i);
     const dt=new Date(d+"T00:00:00");
-    const n=state.tasks.filter(t=>isDone(d,t.id)).length;
+    const list=tasksFor(d);              // その日に数えるタスク
+    const total=list.length||1;          // 0 で割らない
+    const n=list.filter(t=>isDone(d,t.id)).length;
     const pct=Math.round(n/total*100);
-    const full=n>0&&n===state.tasks.length;
+    const full=n>0&&n===list.length;
     const b=document.createElement("button");
     b.className="day";
     if(d===sel) b.dataset.sel="1";
@@ -950,8 +1002,9 @@ function renderWeek(){
 function renderTasks(){
   const el=$("#tasks"); el.innerHTML="";
   const done=doneOf(sel);
+  const shown=visibleTasks();
   for(const cat of CATS){
-    const list=state.tasks.filter(t=>t.cat===cat.id);
+    const list=shown.filter(t=>t.cat===cat.id);
     if(!list.length) continue;
     const h=document.createElement("div");
     h.className="cat"; h.style.setProperty("--c",cat.c);
@@ -970,8 +1023,11 @@ function renderTasks(){
       el.appendChild(b);
     }
   }
-  if(!state.tasks.length){
-    el.innerHTML='<div class="note" style="padding:30px 0">タスクがありません。下の「タスクを編集」から追加してください。</div>';
+  if(!shown.length){
+    el.innerHTML='<div class="note" style="padding:30px 0">'+
+      (state.tasks.length
+        ? "この日タイプに出すタスクはありません。上の切り替えを変えるか、「タスクを編集」で日タイプを見直してください。"
+        : "タスクがありません。下の「タスクを編集」から追加してください。")+'</div>';
   }
 }
 
@@ -990,6 +1046,12 @@ function renderEdit(){
       if(c.id===t.cat) o.selected=true; sel2.appendChild(o);
     });
     sel2.onchange=()=>{ t.cat=sel2.value; save({tasks:true}); render(); };
+    const sel3=document.createElement("select");
+    DAY_TYPES.forEach(dt=>{
+      const o=document.createElement("option"); o.value=dt.id; o.textContent=dt.jp;
+      if(dt.id===t.dayType) o.selected=true; sel3.appendChild(o);
+    });
+    sel3.onchange=()=>{ t.dayType=sel3.value; save({tasks:true}); render(); };
     const st=document.createElement("button");
     st.className="st"; st.textContent="★"; if(t.core) st.dataset.on="1";
     st.onclick=()=>{ t.core=!t.core; save({tasks:true}); renderEdit(); render(); };
@@ -1002,7 +1064,7 @@ function renderEdit(){
       for(const d in state.log) state.log[d]=state.log[d].filter(x=>x!==t.id);
       save({tasks:true, offId:t.id, offDays}); renderEdit(); render();
     };
-    r.append(inp,sel2,st,rm); el.appendChild(r);
+    r.append(inp,sel2,sel3,st,rm); el.appendChild(r);
   });
 }
 function fillCatSelect(){
@@ -1011,6 +1073,21 @@ function fillCatSelect(){
 }
 
 /* ---- 操作 ---- */
+/* 日タイプの切り替え。見せ方を変えるだけで、記録には手を触れない（save も呼ばない） */
+function renderDayMode(){
+  $$("#daySeg button").forEach(b=>{
+    if(b.dataset.mode===dayMode) b.dataset.on="1"; else delete b.dataset.on;
+  });
+}
+$$("#daySeg button").forEach(b=>{
+  b.onclick=()=>{
+    if(dayMode===b.dataset.mode) return;
+    dayMode=b.dataset.mode;
+    lsPut(DAYTYPE_KEY, dayMode);
+    render();
+  };
+});
+
 $("#wPrev").onclick=()=>{ anchor=addDays(anchor,-7); if(sel>anchor||sel<addDays(anchor,-6)) sel=anchor; render(); };
 $("#wNext").onclick=()=>{
   const n=addDays(anchor,7); if(n>today()) return;
@@ -1020,7 +1097,7 @@ $("#btnEdit").onclick=()=>{ renderEdit(); $("#sheetEdit").classList.add("on"); }
 $("#btnAdd").onclick=()=>{
   const name=$("#newName").value.trim();
   if(!name){ toast("名前を入れてください"); return; }
-  state.tasks.push({id:"u"+Date.now(),cat:$("#newCat").value,name,core:false});
+  state.tasks.push({id:"u"+Date.now(),cat:$("#newCat").value,name,core:false,dayType:dayMode});
   $("#newName").value="";
   save({tasks:true}); renderEdit(); render(); toast("追加しました");
 };
