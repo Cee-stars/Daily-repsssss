@@ -25,7 +25,6 @@
 
   --c-listening:#00A9E0;
   --c-speaking:#FF7A18;
-  --c-vocabulary:#7B4BFF;
   --c-writing:#00A56E;
   --c-reading:#F0357E;
 
@@ -334,7 +333,6 @@ button{background:none;border:0;cursor:pointer}
 const CATS = [
   {id:"listening",  name:"LISTENING",  jp:"リスニング",  c:"#00A9E0", soft:"#E6F6FD"},
   {id:"speaking",   name:"SPEAKING",   jp:"スピーキング", c:"#FF7A18", soft:"#FFF3E8"},
-  {id:"vocabulary", name:"VOCABULARY", jp:"単語",       c:"#7B4BFF", soft:"#F1ECFF"},
   {id:"writing",    name:"WRITING",    jp:"ライティング", c:"#00A56E", soft:"#E6F7F1"},
   {id:"reading",    name:"READING",    jp:"リーディング", c:"#F0357E", soft:"#FFEBF3"}
 ];
@@ -349,19 +347,28 @@ const DAY_TYPES = [
 ];
 const DAYTYPE_IDS = DAY_TYPES.map(d=>d.id);
 
+/* 配るタスク一覧。id はチェックの記録と結び付く鍵なので、
+   一度配ったら変えない（名前だけ直したいときは id を据え置く）。 */
 const DEFAULT_TASKS = [
-  {id:"t1",  cat:"listening",  name:"Duo",                 core:true},
-  {id:"t2",  cat:"speaking",   name:"4/3/2",               core:true},
-  {id:"t3",  cat:"speaking",   name:"瞬間英作文",           core:true},
-  {id:"t4",  cat:"speaking",   name:"シャドーイング",        core:true},
-  {id:"t5",  cat:"speaking",   name:"独り言",               core:false},
-  {id:"t6",  cat:"speaking",   name:"フリートーク",          core:false},
-  {id:"t7",  cat:"vocabulary", name:"写真単語",             core:true},
-  {id:"t8",  cat:"vocabulary", name:"Duo",                 core:true},
-  {id:"t9",  cat:"writing",    name:"英語日記",             core:true},
-  {id:"t10", cat:"writing",    name:"iPad or MacBook",     core:false},
-  {id:"t11", cat:"reading",    name:"洋書を読む",           core:true}
+  {id:"dict",      cat:"listening", name:"ディクテーション&シャドーイング",              core:true,  dayType:"off"},
+
+  {id:"sunkan",    cat:"speaking",  name:"瞬間英作文",                                 core:true,  dayType:"off"},
+  {id:"r432",      cat:"speaking",  name:"4/3/2 感想1本",                              core:false, dayType:"off"},
+  {id:"qa",        cat:"speaking",  name:"質問応答",                                   core:false, dayType:"off"},
+  {id:"queue",     cat:"speaking",  name:"復習キュー",                                 core:true,  dayType:"both"},
+  {id:"queueRead", cat:"speaking",  name:"復習キュー：フレーズ3つ音読（レッスン前）",     core:false, dayType:"lesson"},
+  {id:"rephrase",  cat:"speaking",  name:"言えなかったフレーズを3通りで英語化 ×2",       core:true,  dayType:"lesson"},
+  {id:"sortMiss",  cat:"speaking",  name:"聞き取れなかった箇所の仕分け",                core:false, dayType:"lesson"},
+
+  {id:"reflect",   cat:"writing",   name:"振り返り3文",                                core:false, dayType:"lesson"},
+
+  {id:"book",      cat:"reading",   name:"洋書（BOOKSHELF）",                           core:false, dayType:"off"}
 ];
+
+/* この版で一覧を入れ替えた時刻。これより古い記録は、タスクだけを上の一覧に差し替える。
+   チェックの記録（log / marks / cleared）には触れないので、これまでの記録は残る。
+   入れ替えた後は tasksAt がこの時刻になるので、二度は走らない。 */
+const TASKS_AT = 1789217670569;   // 2026-09-12T12:54:30Z
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
@@ -428,6 +435,14 @@ function normalize(s){
       ids.forEach(id=>{ if(!o[id]) o[id]=t; });
     }else if(!out.meta.cleared[d]) out.meta.cleared[d]=t;
   }
+
+  /* 一覧を入れ替えた版より古い記録は、タスクだけ差し替える。
+     消えたタスクの id がチェックの記録に残っても、そのまま置いておく
+     （どのタスクの分か分からなくなるだけで、記録を捨てはしない）。 */
+  if(out.meta.tasksAt < TASKS_AT){
+    out.tasks = DEFAULT_TASKS.map(normTask);
+    out.meta.tasksAt = TASKS_AT;
+  }
   return out;
 }
 
@@ -489,7 +504,14 @@ function load(){
     const raw = localStorage.getItem(KEY);
     if(raw){
       const s = JSON.parse(raw);
-      if(Array.isArray(s.tasks) && s.tasks.length) return normalize(s);
+      if(Array.isArray(s.tasks) && s.tasks.length){
+        const out = normalize(s);
+        /* タスク一覧を入れ替えたときは、その場で端末にも書き戻しておく */
+        if(((s.meta && +s.meta.tasksAt) || 0) < TASKS_AT){
+          try{ localStorage.setItem(KEY, serialize(out)); }catch(e){}
+        }
+        return out;
+      }
     }
   }catch(e){}
   return normalize(null);
@@ -963,7 +985,7 @@ function render(){
   tasks.forEach(t=>{
     const p=document.createElement("div");
     p.className="plate"+(done.includes(t.id)?" on":"");
-    if(done.includes(t.id)) p.style.background=C[t.cat].c;
+    if(done.includes(t.id) && C[t.cat]) p.style.background=C[t.cat].c;
     rack.appendChild(p);
   });
 
