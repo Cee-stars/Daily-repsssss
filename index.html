@@ -125,7 +125,10 @@ button{background:none;border:0;cursor:pointer}
 .task[data-done="1"]{background:var(--soft);border-color:transparent}
 .task[data-done="1"] .box{background:var(--c);border-color:var(--c)}
 .task[data-done="1"] .nm{color:var(--dim);text-decoration:line-through}
-.task .nm{flex:1;font-size:16px;font-weight:700;line-height:1.4}
+.task .tx{flex:1;min-width:0}
+.task .nm{display:block;font-size:16px;font-weight:700;line-height:1.4}
+.task .nt{display:block;margin-top:4px;font-size:12px;font-weight:600;color:var(--dim);line-height:1.45}
+.task[data-done="1"] .nt{opacity:.55}
 .task .star{flex:0 0 auto;font-size:14px;color:var(--accent)}
 
 /* ---- 下部ボタン ---- */
@@ -191,6 +194,10 @@ button{background:none;border:0;cursor:pointer}
 .erow .st{width:38px;height:38px;border-radius:11px;background:#F0F3F9;font-size:15px}
 .erow .st[data-on="1"]{background:#FFF3E8;color:var(--accent)}
 .erow .rm{width:38px;height:38px;border-radius:11px;background:#FDEDEE;color:#C42B37;font-size:17px}
+.erow .ent{
+  flex:1 1 100%;border:0;border-top:1px solid var(--line);background:none;
+  font-size:13px;font-weight:600;color:var(--dim);padding:9px 2px 1px;min-width:0;
+}
 .addrow{display:grid;gap:9px;margin-top:14px}
 .addrow input,.addrow select{
   padding:13px;border-radius:14px;border:1px solid var(--line);background:var(--card);font-size:16px;
@@ -350,20 +357,25 @@ const DAYTYPE_IDS = DAY_TYPES.map(d=>d.id);
 /* 配るタスク一覧。id はチェックの記録と結び付く鍵なので、
    一度配ったら変えない（名前だけ直したいときは id を据え置く）。 */
 const DEFAULT_TASKS = [
-  {id:"dict",      cat:"listening", name:"ディクテーション&シャドーイング（レッスン録画）",  core:true,  dayType:"off"},
+  {id:"dict",      cat:"listening", name:"ディクテーション&シャドーイング（レッスン録画）",  core:true,  dayType:"off",
+   note:"15分・週の前半はカランの回、後半はトピック／フリートークの回"},
 
-  {id:"sunkan",    cat:"speaking",  name:"瞬間英作文（生中心・詰まった文優先）",            core:true,  dayType:"off"},
+  {id:"sunkan",    cat:"speaking",  name:"瞬間英作文（生中心・詰まった文優先）",            core:true,  dayType:"off",
+   note:"15分・レッスンで詰まった文を優先"},
   {id:"r432",      cat:"speaking",  name:"4/3/2 感想1本",                                core:false, dayType:"off"},
   {id:"qa",        cat:"speaking",  name:"質問応答（週2〜3）",                            core:false, dayType:"off"},
-  {id:"queue",     cat:"speaking",  name:"復習キュー",                                   core:true,  dayType:"both"},
+  {id:"queue",     cat:"speaking",  name:"復習キュー",                                   core:true,  dayType:"both",
+   note:"10分"},
   {id:"queueRead", cat:"speaking",  name:"復習キュー：フレーズ3つ音読（レッスン前）",       core:false, dayType:"lesson"},
   {id:"rephrase",  cat:"speaking",  name:"言えなかったフレーズを3通りで英語化 ×2",         core:true,  dayType:"lesson"},
   {id:"sortMiss",  cat:"speaking",  name:"聞き取れなかった箇所の仕分け",                  core:false, dayType:"lesson"},
 
   {id:"reflect",   cat:"writing",   name:"振り返り3文",                                  core:false, dayType:"lesson"},
-  {id:"askQ3",     cat:"writing",   name:"質問3つを書き出す（フリートークの回のみ）",       core:false, dayType:"lesson"},
+  {id:"askQ3",     cat:"writing",   name:"質問3つを書き出す（フリートークの回のみ）",       core:false, dayType:"lesson",
+   note:"翌日のために、質問応答アプリに貯める"},
 
-  {id:"book",      cat:"reading",   name:"洋書（BOOKSHELF）",                             core:false, dayType:"off"}
+  {id:"book",      cat:"reading",   name:"洋書（BOOKSHELF）",                             core:false, dayType:"off",
+   note:"20分"}
 ];
 
 /* この版で一覧を入れ替えた時刻。これより古い記録は、タスクだけを上の一覧に差し替える。
@@ -374,7 +386,7 @@ const DEFAULT_TASKS = [
    ただし必ず「過ぎた時刻」を入れること。先の時刻を入れると、
    手で直したときの Date.now() がこれを下回り、入れ替えが何度も走って
    直した内容を消してしまう。 */
-const TASKS_AT = 1789790760000;   // 2026-09-19T04:06:00Z
+const TASKS_AT = 1789791100000;   // 2026-09-19T04:11:40Z
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
@@ -410,7 +422,9 @@ function addDays(s,n){ const d=new Date(s+"T00:00:00"); d.setDate(d.getDate()+n)
    端末どうしを突き合わせるとき、チェック1つずつで新しいほうを残すために使う。 */
 /* タスク1件の形をそろえる。dayType の無い／読めない記録は「両方」に寄せる（v4 → v5） */
 function normTask(t){
-  return {...t, dayType: DAYTYPE_IDS.includes(t.dayType) ? t.dayType : "both"};
+  return {...t,
+    dayType: DAYTYPE_IDS.includes(t.dayType) ? t.dayType : "both",
+    note:    typeof t.note === "string" ? t.note : ""};   // 名前の下に出す一行メモ
 }
 
 function normalize(s){
@@ -502,7 +516,7 @@ function serialize(s){
     const o={}; Object.keys(s.meta.marks[d]).sort().forEach(id=>o[id]=s.meta.marks[d][id]); marks[d]=o;
   });
   Object.keys(s.meta.cleared).sort().forEach(d=>cleared[d]=s.meta.cleared[d]);
-  return JSON.stringify({v:5, tasks:s.tasks, log, meta:{tasksAt:s.meta.tasksAt, marks, cleared}});
+  return JSON.stringify({v:6, tasks:s.tasks, log, meta:{tasksAt:s.meta.tasksAt, marks, cleared}});
 }
 
 function load(){
@@ -1048,8 +1062,10 @@ function renderTasks(){
       b.style.setProperty("--c",cat.c);
       b.style.setProperty("--soft",cat.soft);
       if(done.includes(t.id)) b.dataset.done="1";
-      b.innerHTML='<span class="box">✓</span><span class="nm"></span>'+(t.core?'<span class="star">★</span>':'');
+      b.innerHTML='<span class="box">✓</span><span class="tx"><span class="nm"></span>'+
+        (t.note?'<span class="nt"></span>':'')+'</span>'+(t.core?'<span class="star">★</span>':'');
       b.querySelector(".nm").textContent=t.name;
+      if(t.note) b.querySelector(".nt").textContent=t.note;
       b.onclick=()=>toggle(t.id);
       el.appendChild(b);
     }
@@ -1095,7 +1111,11 @@ function renderEdit(){
       for(const d in state.log) state.log[d]=state.log[d].filter(x=>x!==t.id);
       save({tasks:true, offId:t.id, offDays}); renderEdit(); render();
     };
-    r.append(inp,sel2,sel3,st,rm); el.appendChild(r);
+    const nt=document.createElement("input");
+    nt.className="ent"; nt.value=t.note; nt.placeholder="メモ（任意）";
+    nt.oninput=()=>{ t.note=nt.value; save({tasks:true}); };
+    nt.onblur=()=>render();
+    r.append(inp,sel2,sel3,st,rm,nt); el.appendChild(r);
   });
 }
 function fillCatSelect(){
@@ -1128,7 +1148,7 @@ $("#btnEdit").onclick=()=>{ renderEdit(); $("#sheetEdit").classList.add("on"); }
 $("#btnAdd").onclick=()=>{
   const name=$("#newName").value.trim();
   if(!name){ toast("名前を入れてください"); return; }
-  state.tasks.push({id:"u"+Date.now(),cat:$("#newCat").value,name,core:false,dayType:dayMode});
+  state.tasks.push({id:"u"+Date.now(),cat:$("#newCat").value,name,core:false,dayType:dayMode,note:""});
   $("#newName").value="";
   save({tasks:true}); renderEdit(); render(); toast("追加しました");
 };
