@@ -350,27 +350,31 @@ const DAYTYPE_IDS = DAY_TYPES.map(d=>d.id);
 /* 配るタスク一覧。id はチェックの記録と結び付く鍵なので、
    一度配ったら変えない（名前だけ直したいときは id を据え置く）。 */
 const DEFAULT_TASKS = [
-  {id:"dict",      cat:"listening", name:"ディクテーション&シャドーイング",              core:true,  dayType:"off"},
+  {id:"dict",      cat:"listening", name:"ディクテーション&シャドーイング（レッスン録画）",  core:true,  dayType:"off"},
 
-  {id:"sunkan",    cat:"speaking",  name:"瞬間英作文",                                 core:true,  dayType:"off"},
-  {id:"r432",      cat:"speaking",  name:"4/3/2 感想1本",                              core:false, dayType:"off"},
-  {id:"qa",        cat:"speaking",  name:"質問応答（週2〜3）",                          core:false, dayType:"off"},
-  {id:"queue",     cat:"speaking",  name:"復習キュー",                                 core:true,  dayType:"both"},
-  {id:"queueRead", cat:"speaking",  name:"復習キュー：フレーズ3つ音読（レッスン前）",     core:false, dayType:"lesson"},
-  {id:"rephrase",  cat:"speaking",  name:"言えなかったフレーズを3通りで英語化 ×2",       core:true,  dayType:"lesson"},
-  {id:"sortMiss",  cat:"speaking",  name:"聞き取れなかった箇所の仕分け",                core:false, dayType:"lesson"},
+  {id:"sunkan",    cat:"speaking",  name:"瞬間英作文（生中心・詰まった文優先）",            core:true,  dayType:"off"},
+  {id:"r432",      cat:"speaking",  name:"4/3/2 感想1本",                                core:false, dayType:"off"},
+  {id:"qa",        cat:"speaking",  name:"質問応答（週2〜3）",                            core:false, dayType:"off"},
+  {id:"queue",     cat:"speaking",  name:"復習キュー",                                   core:true,  dayType:"both"},
+  {id:"queueRead", cat:"speaking",  name:"復習キュー：フレーズ3つ音読（レッスン前）",       core:false, dayType:"lesson"},
+  {id:"rephrase",  cat:"speaking",  name:"言えなかったフレーズを3通りで英語化 ×2",         core:true,  dayType:"lesson"},
+  {id:"sortMiss",  cat:"speaking",  name:"聞き取れなかった箇所の仕分け",                  core:false, dayType:"lesson"},
 
-  {id:"reflect",   cat:"writing",   name:"振り返り3文",                                core:false, dayType:"lesson"},
+  {id:"reflect",   cat:"writing",   name:"振り返り3文",                                  core:false, dayType:"lesson"},
+  {id:"askQ3",     cat:"writing",   name:"質問3つを書き出す（フリートークの回のみ）",       core:false, dayType:"lesson"},
 
-  {id:"book",      cat:"reading",   name:"洋書（BOOKSHELF）",                           core:false, dayType:"off"}
+  {id:"book",      cat:"reading",   name:"洋書（BOOKSHELF）",                             core:false, dayType:"off"}
 ];
 
 /* この版で一覧を入れ替えた時刻。これより古い記録は、タスクだけを上の一覧に差し替える。
    チェックの記録（log / marks / cleared）には触れないので、これまでの記録は残る。
    入れ替えた後は tasksAt がこの時刻になるので、二度は走らない。
    上の一覧を直したときは、この時刻も今に更新すること。そうしないと、
-   すでに入れ替えを済ませた端末に直した内容が届かない。 */
-const TASKS_AT = 1789218100000;   // 2026-09-12T13:01:40Z
+   すでに入れ替えを済ませた端末に直した内容が届かない。
+   ただし必ず「過ぎた時刻」を入れること。先の時刻を入れると、
+   手で直したときの Date.now() がこれを下回り、入れ替えが何度も走って
+   直した内容を消してしまう。 */
+const TASKS_AT = 1789790760000;   // 2026-09-19T04:06:00Z
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
@@ -527,14 +531,17 @@ function load(){
    {replaceAll:true} バックアップの読み込み */
 function save(what){
   const t = Date.now();
+  /* タスクを直した時刻は TASKS_AT より前にしない。
+     端末の時計が遅れていると入れ替えが何度も走り、直した内容が消えるため。 */
+  const tasksAt = Math.max(t, TASKS_AT);
   const mark=(d,id,ts)=>{ (state.meta.marks[d] || (state.meta.marks[d]={}))[id]=ts; };
   if(what){
     if(what.day && what.id) mark(what.day, what.id, t);
-    if(what.tasks) state.meta.tasksAt = t;
+    if(what.tasks) state.meta.tasksAt = tasksAt;
     if(what.offId && what.offDays) what.offDays.forEach(d=>mark(d, what.offId, t));
     if(what.clear){ state.meta.cleared[what.clear]=t; delete state.meta.marks[what.clear]; }
     if(what.replaceAll){
-      state.meta.tasksAt = t;
+      state.meta.tasksAt = tasksAt;
       const dates = new Set([].concat(
         Object.keys(state.log), Object.keys(state.meta.marks), Object.keys(state.meta.cleared)));
       dates.forEach(d=>{ state.meta.cleared[d]=t-1; });   // いったん全部を古い扱いにして
