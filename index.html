@@ -378,15 +378,14 @@ const DEFAULT_TASKS = [
    note:"20分"}
 ];
 
-/* この版で一覧を入れ替えた時刻。これより古い記録は、タスクだけを上の一覧に差し替える。
-   チェックの記録（log / marks / cleared）には触れないので、これまでの記録は残る。
-   入れ替えた後は tasksAt がこの時刻になるので、二度は走らない。
-   上の一覧を直したときは、この時刻も今に更新すること。そうしないと、
-   すでに入れ替えを済ませた端末に直した内容が届かない。
-   ただし必ず「過ぎた時刻」を入れること。先の時刻を入れると、
-   手で直したときの Date.now() がこれを下回り、入れ替えが何度も走って
-   直した内容を消してしまう。 */
-const TASKS_AT = 1789791100000;   // 2026-09-19T04:11:40Z
+/* 配る一覧の版。記録が持っている版がこれより古ければ、タスクだけを
+   上の一覧に差し替える。チェックの記録（log / marks / cleared）には
+   触れないので、これまでの記録は残る。差し替えたら記録にこの版を書くので、
+   二度は走らない。
+   上の一覧を直したときは、この数字を1つ増やすこと。
+   （時刻で比べていたが、端末で★を付け直すなどすると、その時刻が
+     判定の時刻を追い越して入れ替えが届かなくなるのでやめた） */
+const TASKS_REV = 1;
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
@@ -432,13 +431,14 @@ function normalize(s){
   const out = {
     tasks: (ok ? s.tasks : DEFAULT_TASKS).map(normTask),
     log:   {},
-    meta:  {tasksAt:0, marks:{}, cleared:{}}
+    meta:  {tasksAt:0, tasksRev:0, marks:{}, cleared:{}}
   };
   const src = (s && s.log && typeof s.log==="object") ? s.log : {};
   for(const d in src) if(Array.isArray(src[d]) && src[d].length) out.log[d]=[...new Set(src[d])];
 
   const m = s && s.meta;
-  out.meta.tasksAt = (m && +m.tasksAt) || 0;
+  out.meta.tasksAt  = (m && +m.tasksAt)  || 0;
+  out.meta.tasksRev = (m && +m.tasksRev) || 0;
   if(m && m.marks) for(const d in m.marks){
     const o={};
     for(const id in m.marks[d]){ const t=+m.marks[d][id]||0; if(t) o[id]=t; }
@@ -459,9 +459,12 @@ function normalize(s){
   /* 一覧を入れ替えた版より古い記録は、タスクだけ差し替える。
      消えたタスクの id がチェックの記録に残っても、そのまま置いておく
      （どのタスクの分か分からなくなるだけで、記録を捨てはしない）。 */
-  if(out.meta.tasksAt < TASKS_AT){
+  if(out.meta.tasksRev < TASKS_REV){
     out.tasks = DEFAULT_TASKS.map(normTask);
-    out.meta.tasksAt = TASKS_AT;
+    out.meta.tasksRev = TASKS_REV;
+    /* tasksAt はそのままにする。ここで Date.now() を入れると
+       serialize の結果が毎回変わり、同期が送り続けてしまう。
+       突き合わせる相手も同じように差し替わるので、これで揃う。 */
   }
   return out;
 }
@@ -478,7 +481,8 @@ function mergeState(a,b){
   const out = {
     tasks: (b.meta.tasksAt > a.meta.tasksAt ? b.tasks : a.tasks).map(t=>({...t})),
     log:   {},
-    meta:  {tasksAt: Math.max(a.meta.tasksAt,b.meta.tasksAt), marks:{}, cleared:{}}
+    meta:  {tasksAt:  Math.max(a.meta.tasksAt, b.meta.tasksAt),
+            tasksRev: Math.max(a.meta.tasksRev, b.meta.tasksRev), marks:{}, cleared:{}}
   };
   const dates = new Set([].concat(
     Object.keys(a.log), Object.keys(b.log),
@@ -516,7 +520,7 @@ function serialize(s){
     const o={}; Object.keys(s.meta.marks[d]).sort().forEach(id=>o[id]=s.meta.marks[d][id]); marks[d]=o;
   });
   Object.keys(s.meta.cleared).sort().forEach(d=>cleared[d]=s.meta.cleared[d]);
-  return JSON.stringify({v:6, tasks:s.tasks, log, meta:{tasksAt:s.meta.tasksAt, marks, cleared}});
+  return JSON.stringify({v:7, tasks:s.tasks, log, meta:{tasksAt:s.meta.tasksAt, tasksRev:s.meta.tasksRev, marks, cleared}});
 }
 
 function load(){
@@ -527,7 +531,7 @@ function load(){
       if(Array.isArray(s.tasks) && s.tasks.length){
         const out = normalize(s);
         /* タスク一覧を入れ替えたときは、その場で端末にも書き戻しておく */
-        if(((s.meta && +s.meta.tasksAt) || 0) < TASKS_AT){
+        if(((s.meta && +s.meta.tasksRev) || 0) < TASKS_REV){
           try{ localStorage.setItem(KEY, serialize(out)); }catch(e){}
         }
         return out;
@@ -545,17 +549,14 @@ function load(){
    {replaceAll:true} バックアップの読み込み */
 function save(what){
   const t = Date.now();
-  /* タスクを直した時刻は TASKS_AT より前にしない。
-     端末の時計が遅れていると入れ替えが何度も走り、直した内容が消えるため。 */
-  const tasksAt = Math.max(t, TASKS_AT);
   const mark=(d,id,ts)=>{ (state.meta.marks[d] || (state.meta.marks[d]={}))[id]=ts; };
   if(what){
     if(what.day && what.id) mark(what.day, what.id, t);
-    if(what.tasks) state.meta.tasksAt = tasksAt;
+    if(what.tasks) state.meta.tasksAt = t;
     if(what.offId && what.offDays) what.offDays.forEach(d=>mark(d, what.offId, t));
     if(what.clear){ state.meta.cleared[what.clear]=t; delete state.meta.marks[what.clear]; }
     if(what.replaceAll){
-      state.meta.tasksAt = tasksAt;
+      state.meta.tasksAt = t;
       const dates = new Set([].concat(
         Object.keys(state.log), Object.keys(state.meta.marks), Object.keys(state.meta.cleared)));
       dates.forEach(d=>{ state.meta.cleared[d]=t-1; });   // いったん全部を古い扱いにして
