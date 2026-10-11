@@ -357,25 +357,25 @@ const DAYTYPE_IDS = DAY_TYPES.map(d=>d.id);
 /* 配るタスク一覧。id はチェックの記録と結び付く鍵なので、
    一度配ったら変えない（名前だけ直したいときは id を据え置く）。 */
 const DEFAULT_TASKS = [
-  {id:"dict",      cat:"listening", name:"ディクテーション&シャドーイング（レッスン録画）",  core:true,  dayType:"off",
-   note:"15分・週の前半はカランの回、後半はトピック／フリートークの回"},
+  /* ---- どちらの日にも出す。毎日の固定点はこれ1つ ---- */
+  {id:"queue",     cat:"speaking",  name:"Anki（声に出して答える）",                      core:true,  dayType:"both",
+   note:"10分・レッスン日は3分でよい／新規5枚・復習60枚まで"},
 
-  {id:"sunkan",    cat:"speaking",  name:"瞬間英作文（生中心・詰まった文優先）",            core:true,  dayType:"off",
-   note:"15分・レッスンで詰まった文を優先"},
-  {id:"r432",      cat:"speaking",  name:"4/3/2 感想1本",                                core:false, dayType:"off"},
-  {id:"qa",        cat:"speaking",  name:"質問応答（週2〜3）",                            core:false, dayType:"off"},
-  {id:"queue",     cat:"speaking",  name:"復習キュー",                                   core:true,  dayType:"both",
-   note:"10分"},
-  {id:"queueRead", cat:"speaking",  name:"復習キュー：フレーズ3つ音読（レッスン前）",       core:false, dayType:"lesson"},
-  {id:"rephrase",  cat:"speaking",  name:"言えなかったフレーズを3通りで英語化 ×2",         core:true,  dayType:"lesson"},
-  {id:"sortMiss",  cat:"speaking",  name:"聞き取れなかった箇所の仕分け",                  core:false, dayType:"lesson"},
-
-  {id:"reflect",   cat:"writing",   name:"振り返り3文",                                  core:false, dayType:"lesson"},
-  {id:"askQ3",     cat:"writing",   name:"質問3つを書き出す（フリートークの回のみ）",       core:false, dayType:"lesson",
-   note:"翌日のために、質問応答アプリに貯める"},
-
+  /* ---- レッスンなし日 ---- */
+  {id:"dict",      cat:"listening", name:"リピーティング（未知の動画）",                   core:true,  dayType:"off",
+   note:"10分・最後の1分は強勢とリズムだけ真似る"},
+  {id:"sunkan",    cat:"speaking",  name:"瞬間英作文（パラフレーズ由来を先に）",            core:true,  dayType:"off",
+   note:"15分・3通りに言い換えた文のうち2通りはここへ"},
+  {id:"r432",      cat:"speaking",  name:"即興1本（4/3/2 または 未知の質問に即答）",        core:false, dayType:"off",
+   note:"5分・話題は毎回変える／フリートークの前日は質問を3つ用意"},
   {id:"book",      cat:"reading",   name:"洋書（BOOKSHELF）",                             core:false, dayType:"off",
-   note:"20分"}
+   note:"10分・未知語は1日5件までメモ。Anki に入れるかは週1でまとめて決める"},
+
+  /* ---- レッスン日。合計20分に収める ---- */
+  {id:"queueRead", cat:"speaking",  name:"前回のフレーズ3つ音読（レッスン前）",             core:false, dayType:"lesson",
+   note:"2分・今日のレッスンで使う"},
+  {id:"rephrase",  cat:"speaking",  name:"直後リカバリー",                                core:true,  dayType:"lesson",
+   note:"15分・席を立つ前に。詰まり2つ→各3通りで英語化→振り返り3文。聞けなかった箇所は A音／B語／C構文 の印だけ"}
 ];
 
 /* 配る一覧の版。記録が持っている版がこれより古ければ、タスクだけを
@@ -385,7 +385,7 @@ const DEFAULT_TASKS = [
    上の一覧を直したときは、この数字を1つ増やすこと。
    （時刻で比べていたが、端末で★を付け直すなどすると、その時刻が
      判定の時刻を追い越して入れ替えが届かなくなるのでやめた） */
-const TASKS_REV = 1;
+const TASKS_REV = 2;
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
