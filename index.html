@@ -865,7 +865,7 @@ const DEFAULT_TASKS = [
   /* ---- レッスンなし日 ---- */
   {id:"dict",      cat:"listening", name:"リピーティング（未知の動画）",                   core:true,  dayType:"off",
    note:"10分・最後の1分は強勢とリズムだけ真似る"},
-  {id:"sunkan",    cat:"speaking",  name:"瞬間英作文（パラフレーズ由来を先に）",            core:true,  dayType:"off",
+  {id:"sunkan",    cat:"speaking",  name:"瞬間英作文",                                   core:true,  dayType:"off",
    note:"15分・3通りに言い換えた文のうち2通りはここへ"},
   {id:"r432",      cat:"speaking",  name:"即興1本（4/3/2 または 未知の質問に即答）",        core:false, dayType:"off",
    note:"5分・話題は毎回変える／フリートークの前日は質問を3つ用意"},
@@ -970,6 +970,13 @@ function normalize(s){
        serialize の結果が毎回変わり、同期が送り続けてしまう。
        突き合わせる相手も同じように差し替わるので、これで揃う。 */
   }
+
+  /* 名前だけを直したいとき。版を上げると一覧ごと入れ替わって、端末で
+     付け直した★や名前まで消えるので、この1件だけを合わせる。
+     すでに自分で別の名前にしてあれば、一致しないので触らない。 */
+  const sunkan = out.tasks.find(t => t.id === "sunkan");
+  if(sunkan && sunkan.name === "瞬間英作文（パラフレーズ由来を先に）") sunkan.name = "瞬間英作文";
+
   return out;
 }
 
