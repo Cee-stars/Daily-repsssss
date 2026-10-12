@@ -1,0 +1,9 @@
+# 配らなくていいもの。置き場の作りや手元の道具まで公開する必要はない
+wrangler.toml
+worker.js
+functions/
+tools/
+schema.sql
+README.md
+_routes.json
+.assetsignore

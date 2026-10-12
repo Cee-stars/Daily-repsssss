@@ -1,0 +1,16 @@
+# Cloudflare Workers の設定。
+# 静的ファイル（index.html など）はそのまま配り、/api/state だけを worker.js が受ける。
+# 静的ファイルの取り出しは Worker の呼び出し回数に数えられないので、無料枠はほぼ減らない。
+
+name = "daily-repsssss"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+
+[assets]
+directory = "./"
+
+# 記録の置き場。binding の名前は DB でなければ動かない（functions/api/state.js が env.DB を見る）
+[[d1_databases]]
+binding = "DB"
+database_name = "daily-reps"
+database_id = "491121ff-684f-4961-b4ff-be8eadd3d101"
