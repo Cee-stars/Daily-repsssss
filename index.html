@@ -312,8 +312,8 @@ body{
   mix-blend-mode:screen;pointer-events:none;
 }
 @keyframes float{
-  0%,100%{transform:translate3d(0,-6px,0) rotateZ(-1.8deg) rotateY(-6deg)}
-  50%    {transform:translate3d(0,8px,0)  rotateZ(1.8deg)  rotateY(6deg)}
+  0%,100%{transform:translate3d(0,0,0)    scale3d(1,1,1)        rotateZ(-1.1deg)}
+  50%    {transform:translate3d(0,-7px,0) scale3d(.985,1.018,1) rotateZ(1.1deg)}
 }
 .mon[data-hit="1"]{animation:hit .36s var(--spring)}
 .mon[data-hit="1"] .flash{animation:flash .32s ease-out}
@@ -392,6 +392,15 @@ body{
     0 0 46px 12px rgba(255,86,0,.26),
     inset -4px -5px 12px rgba(0,0,0,.52);
 }
+.meteor .rock{
+  position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  background:
+    radial-gradient(circle at 62% 38%, rgba(0,0,0,.40) 0 12%, transparent 13%),
+    radial-gradient(circle at 33% 66%, rgba(0,0,0,.34) 0 9%,  transparent 10%),
+    radial-gradient(circle at 73% 71%, rgba(0,0,0,.30) 0 7%,  transparent 8%),
+    radial-gradient(circle at 45% 24%, rgba(255,255,255,.22) 0 6%, transparent 7%),
+    radial-gradient(circle at 20% 44%, rgba(0,0,0,.22) 0 5%,  transparent 6%);
+}
 .meteor::before,.meteor::after{content:"";position:absolute;border-radius:50%;pointer-events:none}
 .meteor::before{
   inset:-34%;opacity:.5;
@@ -400,6 +409,31 @@ body{
 .meteor::after{
   inset:-20%;
   background:radial-gradient(circle, rgba(255,186,96,.42), transparent 64%);
+}
+
+/* ---- 丸める：カードを握りつぶして岩にする ---- */
+.crumple{
+  position:fixed;z-index:31;pointer-events:none;transform-origin:50% 50%;
+  transition:none!important;overflow:hidden;
+  box-shadow:0 12px 30px rgba(21,26,36,.22);
+}
+.crumple .creases{
+  position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;
+  background:
+    linear-gradient(116deg, transparent 35%, rgba(44,32,20,.18) 38%, transparent 41%),
+    linear-gradient(-68deg, transparent 51%, rgba(44,32,20,.15) 54%, transparent 57%),
+    linear-gradient(24deg,  transparent 59%, rgba(255,255,255,.6) 62%, transparent 65%),
+    linear-gradient(-141deg,transparent 43%, rgba(44,32,20,.12) 46%, transparent 49%),
+    linear-gradient(81deg,  transparent 68%, rgba(255,255,255,.4) 70%, transparent 72%);
+}
+.crumple .rock{
+  position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;
+  background:
+    radial-gradient(circle at 62% 38%, rgba(0,0,0,.34) 0 11%, transparent 12%),
+    radial-gradient(circle at 33% 66%, rgba(0,0,0,.28) 0 8%,  transparent 9%),
+    radial-gradient(circle at 34% 27%, #FFFCF2 0%, #FFE2AC 13%, #FF9A2E 31%,
+                    #C8450B 57%, #4C1B06 83%, #280D03 100%);
+  box-shadow:0 0 18px 5px rgba(255,140,40,.5);
 }
 
 /* ---- タスクカード：立体と燃焼 ---- */
@@ -690,7 +724,7 @@ body{
 
 <div class="sheet" id="sheetMon"><div class="inner">
   <h3>モンスターを選ぶ</h3>
-  <div class="sub">タスクを1つ終えるたび、そのタスクが隕石になって飛んでいき、こいつに当たります。その日のぶんを全部終えると倒せます。
+  <div class="sub">タスクを1つ終えるたび、そのカードがその場で握りつぶされて岩の玉になり、隕石として飛んでいってこいつに当たります。その日のぶんを全部終えると倒せます。
 選んだモンスターはこの端末だけの見せ方です。記録には入りません。</div>
   <div class="monGrid" id="monGrid"></div>
   <button class="ghost" data-close="1">閉じる</button>
@@ -1344,8 +1378,14 @@ function toggle(id, src){
   const last = vis.length>0 && vis.every(t=>arr.includes(t.id));
   const cat = C[(state.tasks.find(t=>t.id===id)||{}).cat] || C.speaking;
 
-  render();
-  if(on && rect) fxStrike(rect, cat.c, last);
+  if(on && rect) hpPending++;          // 当たるまで HP は減らさない
+
+  if(on && rect && !reduced()){
+    fxRoll(src, rect, cat.c, ()=>{ render(); fxStrike(rect, cat.c, last); });
+  }else{
+    render();
+    if(on && rect) fxStrike(rect, cat.c, last);
+  }
 }
 
 /* ---- 連続日数：コア習慣を全部やった日が続いた数 ---- */
@@ -1513,103 +1553,141 @@ const reduced = () => {
   try{ return matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ return false; }
 };
 
-/* ---- モンスター ----
-   どれを出すかは端末ごとに選べる。倒す相手なので、少し怖くて少し愛嬌がある形にした。 */
+/* ---- モンスター：恐竜 ----
+   どれを出すかは端末ごとに選べる。倒す相手なので、少し手強くて可愛い形にした。
+   体・頭・お腹・影をそれぞれ別のグラデーションで塗り、重なるところに影を落として
+   立体に見せている。 */
 const MONSTERS = [
-  {id:"norma", name:"ノルマ",   tag:"QUOTA",  lite:"#C9B6FF", hue:"#8B5CF6", dark:"#2B0A5E", ink:"#1C0A3E", eye:"#FFE08A"},
-  {id:"nebo",  name:"ネボスケ", tag:"SNOOZE", lite:"#A8E6FF", hue:"#2DA8E0", dark:"#06324B", ink:"#042334", eye:"#FFFFFF"},
-  {id:"sabo",  name:"サボリン", tag:"SLACK",  lite:"#A4F5DC", hue:"#17B890", dark:"#033B33", ink:"#02261F", eye:"#FFF3B0"},
-  {id:"gengo", name:"ゲンゴウ", tag:"SILENCE",lite:"#FFC68E", hue:"#FF7A18", dark:"#5A1C00", ink:"#3A1200", eye:"#FFFFFF"},
-  {id:"mugen", name:"ムゲン",   tag:"ENDLESS",lite:"#9AA0BC", hue:"#3B3F52", dark:"#05060C", ink:"#020306", eye:"#79F6FF"}
+  {id:"gao",   name:"ガオ",     tag:"ROAR",  kind:"rex",
+   lite:"#FFC391", hue:"#F2662B", dark:"#8A2A08", ink:"#3A1200", belly:"#FFE9C9", bellyD:"#F3C291"},
+  {id:"plate", name:"プレート", tag:"PLATE", kind:"stego",
+   lite:"#B2E8A6", hue:"#4FAF55", dark:"#1C5A2A", ink:"#0C3315", belly:"#EEF8D8", bellyD:"#C8E2A8"},
+  {id:"tsuno", name:"ツノン",   tag:"HORN",  kind:"tri",
+   lite:"#AEDCF7", hue:"#3D8FD1", dark:"#154670", ink:"#0A2840", belly:"#E6F3FD", bellyD:"#B9D7EE"},
+  {id:"noppo", name:"ノッポ",   tag:"TALL",  kind:"brachio",
+   lite:"#D8C2F8", hue:"#8B6AD6", dark:"#3C2470", ink:"#22123F", belly:"#F3EAFF", bellyD:"#CFBCEC"},
+  {id:"tsuba", name:"ツバサ",   tag:"WING",  kind:"ptero",
+   lite:"#A8EDE0", hue:"#35B5A4", dark:"#0E5B52", ink:"#06332D", belly:"#E4FAF4", bellyD:"#B6E4D9"}
 ];
+
+const HEAD = { rex:{y:78,r:40}, stego:{y:78,r:37}, tri:{y:80,r:37}, brachio:{y:44,r:27}, ptero:{y:74,r:35} };
 
 function monsterOf(){
   const id = ls(MON_KEY);
   return MONSTERS.find(m=>m.id===id) || MONSTERS[0];
 }
 
-/* 球体に見えるよう、放射グラデーションと縁の光で奥行きを出す。
-   id は描く場所ごとに変える（同じ id が2つあると片方のグラデーションが効かない） */
 function monsterSVG(m,uid){
-  const g="g"+uid+m.id, h="h"+uid+m.id, cp="c"+uid+m.id;
-  const body =
-    '<circle cx="100" cy="102" r="56" fill="url(#'+g+')"/>'+
-    '<path d="M48 124 A56 56 0 0 0 152 124" fill="none" stroke="rgba(255,255,255,.26)" stroke-width="3.5" stroke-linecap="round"/>'+
-    '<ellipse cx="76" cy="74" rx="17" ry="11" fill="rgba(255,255,255,.42)" transform="rotate(-28 76 74)"/>';
+  const G="g"+uid+m.id, D="d"+uid+m.id, B="b"+uid+m.id, S="s"+uid+m.id;
+  const hd=HEAD[m.kind], k=(hd.r/40).toFixed(4);
 
-  const face = {
-    norma:
-      '<ellipse cx="100" cy="100" rx="31" ry="33" fill="#fff"/>'+
-      '<circle cx="104" cy="104" r="16" fill="'+m.eye+'"/>'+
-      '<circle cx="104" cy="104" r="8.5" fill="'+m.ink+'"/>'+
-      '<circle cx="95" cy="93" r="5.5" fill="#fff" opacity=".95"/>'+
-      '<path d="M84 142 Q100 153 116 142" stroke="'+m.ink+'" stroke-width="5.5" fill="none" stroke-linecap="round"/>',
-    nebo:
-      '<path d="M68 100 Q81 88 94 100" stroke="'+m.ink+'" stroke-width="6.5" fill="none" stroke-linecap="round"/>'+
-      '<path d="M106 100 Q119 88 132 100" stroke="'+m.ink+'" stroke-width="6.5" fill="none" stroke-linecap="round"/>'+
-      '<ellipse cx="100" cy="129" rx="10" ry="12" fill="'+m.ink+'"/>'+
-      '<text x="140" y="56" font-size="22" font-weight="900" fill="#fff" opacity=".6" font-family="system-ui">z</text>'+
-      '<text x="156" y="38" font-size="15" font-weight="900" fill="#fff" opacity=".4" font-family="system-ui">z</text>',
-    sabo:
-      '<circle cx="100" cy="72" r="11" fill="#fff"/><circle cx="101" cy="73" r="5.5" fill="'+m.ink+'"/>'+
-      '<circle cx="78" cy="108" r="13" fill="#fff"/><circle cx="80" cy="110" r="6.5" fill="'+m.ink+'"/>'+
-      '<circle cx="122" cy="108" r="13" fill="#fff"/><circle cx="124" cy="110" r="6.5" fill="'+m.ink+'"/>'+
-      '<path d="M82 140 Q91 132 100 140 Q109 148 118 140" stroke="'+m.ink+'" stroke-width="5" fill="none" stroke-linecap="round"/>',
-    gengo:
-      '<path d="M68 76 L98 90" stroke="'+m.ink+'" stroke-width="7.5" stroke-linecap="round"/>'+
-      '<path d="M132 76 L102 90" stroke="'+m.ink+'" stroke-width="7.5" stroke-linecap="round"/>'+
-      '<ellipse cx="80" cy="104" rx="13" ry="12.5" fill="#fff"/><circle cx="83" cy="106" r="6.5" fill="'+m.ink+'"/>'+
-      '<ellipse cx="120" cy="104" rx="13" ry="12.5" fill="#fff"/><circle cx="117" cy="106" r="6.5" fill="'+m.ink+'"/>'+
-      '<path d="M76 130 Q100 154 124 130 Z" fill="'+m.ink+'"/>'+
-      '<path d="M87 134 L93 145 L98 134 Z" fill="#fff"/>'+
-      '<path d="M104 134 L109 145 L114 134 Z" fill="#fff"/>',
-    mugen:
-      '<circle cx="100" cy="100" r="24" fill="'+m.eye+'" opacity=".16"/>'+
-      '<circle cx="100" cy="100" r="14" fill="'+m.eye+'"/>'+
-      '<circle cx="100" cy="100" r="5.5" fill="'+m.ink+'"/>'+
-      '<path d="M86 140 Q100 134 114 140" stroke="'+m.eye+'" stroke-width="4" fill="none" stroke-linecap="round" opacity=".7"/>'
-  }[m.id] || "";
+  const defs='<defs>'+
+    '<radialGradient id="'+G+'" cx="34%" cy="22%" r="86%">'+
+      '<stop offset="0" stop-color="'+m.lite+'"/>'+
+      '<stop offset=".48" stop-color="'+m.hue+'"/>'+
+      '<stop offset="1" stop-color="'+m.dark+'"/></radialGradient>'+
+    '<linearGradient id="'+D+'" x1="0" y1="0" x2=".3" y2="1">'+
+      '<stop offset="0" stop-color="'+m.hue+'"/>'+
+      '<stop offset="1" stop-color="'+m.dark+'"/></linearGradient>'+
+    '<linearGradient id="'+B+'" x1="0" y1="0" x2="0" y2="1">'+
+      '<stop offset="0" stop-color="'+m.belly+'"/>'+
+      '<stop offset="1" stop-color="'+m.bellyD+'"/></linearGradient>'+
+    '<radialGradient id="'+S+'">'+
+      '<stop offset="0" stop-color="#000" stop-opacity=".5"/>'+
+      '<stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>'+
+  '</defs>';
 
-  const back = {
-    norma:
-      '<path d="M58 66 C44 44 42 26 50 16 C62 26 72 44 79 59 Z" fill="url(#'+h+')"/>'+
-      '<path d="M142 66 C156 44 158 26 150 16 C138 26 128 44 121 59 Z" fill="url(#'+h+')"/>',
-    nebo:
-      '<path d="M52 74 C28 62 16 78 25 95 C34 110 52 106 60 95 Z" fill="url(#'+h+')"/>'+
-      '<path d="M148 74 C172 62 184 78 175 95 C166 110 148 106 140 95 Z" fill="url(#'+h+')"/>',
-    sabo:
-      '<path d="M72 54 L60 16 L90 44 Z" fill="url(#'+h+')"/>'+
-      '<path d="M100 44 L100 6 L117 38 Z" fill="url(#'+h+')"/>'+
-      '<path d="M128 54 L142 18 L112 44 Z" fill="url(#'+h+')"/>',
-    gengo:
-      '<path d="M60 62 C50 40 53 26 62 20 C71 31 76 48 78 59 Z" fill="url(#'+h+')"/>'+
-      '<path d="M140 62 C150 40 147 26 138 20 C129 31 124 48 122 59 Z" fill="url(#'+h+')"/>',
-    mugen:
-      '<ellipse cx="100" cy="104" rx="82" ry="23" fill="none" stroke="'+m.eye+
-        '" stroke-width="4" opacity=".5" transform="rotate(-18 100 104)"/>'
-  }[m.id] || "";
+  /* 背中（頭より奥に描く） */
+  const back={
+    rex:'<path d="M56 110 L41 72 L74 98 Z" fill="url(#'+D+')"/>'+
+        '<path d="M144 110 L159 72 L126 98 Z" fill="url(#'+D+')"/>'+
+        '<path d="M64 132 L46 104 L78 120 Z" fill="url(#'+D+')"/>'+
+        '<path d="M136 132 L154 104 L122 120 Z" fill="url(#'+D+')"/>',
+    stego:'<path d="M50 116 C33 92 39 66 57 58 C70 72 73 98 68 114 Z" fill="url(#'+D+')"/>'+
+          '<path d="M150 116 C167 92 161 66 143 58 C130 72 127 98 132 114 Z" fill="url(#'+D+')"/>'+
+          '<path d="M60 142 C44 126 44 108 56 100 C66 112 68 130 66 142 Z" fill="url(#'+D+')"/>'+
+          '<path d="M140 142 C156 126 156 108 144 100 C134 112 132 130 134 142 Z" fill="url(#'+D+')"/>',
+    tri:'', brachio:'',
+    ptero:'<path d="M66 116 C30 94 8 102 3 124 C25 119 44 126 60 139 Z" fill="url(#'+D+')"/>'+
+          '<path d="M134 116 C170 94 192 102 197 124 C175 119 156 126 140 139 Z" fill="url(#'+D+')"/>'
+  }[m.kind];
 
-  /* ムゲンの輪は、体の手前にもう一度描いて輪の中を通っているように見せる */
-  const front = m.id==="mugen"
-    ? '<ellipse cx="100" cy="104" rx="82" ry="23" fill="none" stroke="'+m.eye+
-      '" stroke-width="4" opacity=".85" transform="rotate(-18 100 104)" clip-path="url(#'+cp+')"/>'
+  /* 首（ノッポだけ） */
+  const neck = m.kind==="brachio"
+    ? '<path d="M87 120 C80 94 80 68 88 50 L113 52 C106 70 107 96 113 122 Z" fill="url(#'+G+')"/>'
+    : '';
+
+  /* 頭の中。半径40の座標で描いて、種類ごとに縮める */
+  const headBack = m.kind==="tri"
+    ? '<path d="M0 -57 C38 -57 59 -29 57 4 C55 31 32 46 0 46 C-32 46 -55 31 -57 4 C-59 -29 -38 -57 0 -57 Z" fill="url(#'+B+')"/>'+
+      '<path d="M0 -57 C38 -57 59 -29 57 4 C55 31 32 46 0 46 C-32 46 -55 31 -57 4 C-59 -29 -38 -57 0 -57 Z" '+
+        'fill="none" stroke="'+m.dark+'" stroke-opacity=".5" stroke-width="3"/>'+
+      '<path d="M-46 -24 L-31 -16 M-25 -47 L-17 -30 M0 -55 L0 -37 M25 -47 L17 -30 M46 -24 L31 -16" '+
+        'stroke="'+m.dark+'" stroke-opacity=".28" stroke-width="3" stroke-linecap="round"/>'
     : "";
 
-  return '<svg viewBox="0 0 200 200" aria-hidden="true">'+
-    '<defs>'+
-      '<radialGradient id="'+g+'" cx="34%" cy="26%" r="82%">'+
-        '<stop offset="0" stop-color="'+m.lite+'"/>'+
-        '<stop offset=".52" stop-color="'+m.hue+'"/>'+
-        '<stop offset="1" stop-color="'+m.dark+'"/>'+
-      '</radialGradient>'+
-      '<linearGradient id="'+h+'" x1="0" y1="0" x2="0" y2="1">'+
-        '<stop offset="0" stop-color="'+m.lite+'"/>'+
-        '<stop offset="1" stop-color="'+m.dark+'"/>'+
-      '</linearGradient>'+
-      '<clipPath id="'+cp+'"><rect x="0" y="104" width="200" height="96"/></clipPath>'+
-    '</defs>'+
-    '<ellipse cx="100" cy="180" rx="44" ry="8" fill="rgba(0,0,0,.4)"/>'+
-    back + body + face + front +
+  const horns={
+    tri:'<path d="M-24 -32 L-19 -58 L-9 -30 Z" fill="#FFF6E6" stroke="'+m.dark+'" stroke-opacity=".3" stroke-width="1.6"/>'+
+        '<path d="M24 -32 L19 -58 L9 -30 Z" fill="#FFF6E6" stroke="'+m.dark+'" stroke-opacity=".3" stroke-width="1.6"/>',
+    brachio:'<ellipse cx="0" cy="-32" rx="9" ry="7" fill="url(#'+G+')"/>'
+  }[m.kind] || "";
+
+  /* 口もと。ツバサだけ くちばし */
+  const muzzle = m.kind==="ptero"
+    ? '<path d="M-14 6 L14 6 L0 31 Z" fill="url(#'+B+')"/>'+
+      '<path d="M-14 6 L14 6" stroke="'+m.ink+'" stroke-opacity=".35" stroke-width="2"/>'+
+      '<ellipse cx="-6" cy="-1" rx="2.4" ry="1.9" fill="'+m.ink+'"/>'+
+      '<ellipse cx="6" cy="-1" rx="2.4" ry="1.9" fill="'+m.ink+'"/>'
+    : '<ellipse cx="0" cy="15" rx="23" ry="16" fill="url(#'+B+')"/>'+
+      '<ellipse cx="-8" cy="9" rx="2.8" ry="2.2" fill="'+m.ink+'"/>'+
+      '<ellipse cx="8" cy="9" rx="2.8" ry="2.2" fill="'+m.ink+'"/>'+
+      '<path d="M-11 20 Q0 28 11 20" stroke="'+m.ink+'" stroke-width="3.2" fill="none" stroke-linecap="round"/>';
+
+  const eyes =
+    '<ellipse cx="-16" cy="-11" rx="12" ry="13.5" fill="#fff"/>'+
+    '<circle cx="-14" cy="-9" r="7" fill="'+m.ink+'"/>'+
+    '<circle cx="-16.6" cy="-12.4" r="2.9" fill="#fff"/>'+
+    '<ellipse cx="16" cy="-11" rx="12" ry="13.5" fill="#fff"/>'+
+    '<circle cx="18" cy="-9" r="7" fill="'+m.ink+'"/>'+
+    '<circle cx="15.4" cy="-12.4" r="2.9" fill="#fff"/>';
+
+  const faceExtra={
+    rex:'<path d="M-28 -27 L-9 -21" stroke="'+m.ink+'" stroke-width="4.2" stroke-linecap="round"/>'+
+        '<path d="M28 -27 L9 -21" stroke="'+m.ink+'" stroke-width="4.2" stroke-linecap="round"/>'+
+        '<path d="M-9 21 L-6 30 L-2 21 Z" fill="#fff"/>'+
+        '<path d="M2 21 L6 30 L9 21 Z" fill="#fff"/>',
+    stego:'<path d="M-27 -24 Q-18 -29 -9 -24" stroke="'+m.ink+'" stroke-opacity=".5" stroke-width="3" fill="none" stroke-linecap="round"/>'+
+          '<path d="M27 -24 Q18 -29 9 -24" stroke="'+m.ink+'" stroke-opacity=".5" stroke-width="3" fill="none" stroke-linecap="round"/>',
+    tri:'<path d="M-7 8 L0 -10 L7 8 Z" fill="#FFF6E6" stroke="'+m.dark+'" stroke-opacity=".3" stroke-width="1.6"/>'
+  }[m.kind] || "";
+
+  const head='<g transform="translate(100,'+hd.y+') scale('+k+')">'+
+    headBack+
+    '<circle cx="0" cy="0" r="40" fill="url(#'+G+')"/>'+
+    horns+
+    '<ellipse cx="-20" cy="-24" rx="15" ry="10" fill="#fff" fill-opacity=".3" transform="rotate(-28 -20 -24)"/>'+
+    muzzle+eyes+faceExtra+
+  '</g>';
+
+  return '<svg viewBox="0 0 200 200" aria-hidden="true">'+defs+
+    '<ellipse cx="100" cy="186" rx="54" ry="10" fill="url(#'+S+')"/>'+
+    /* しっぽ */
+    '<path d="M74 160 C44 173 15 161 7 134 C5 124 14 119 20 126 C35 143 56 147 72 140 Z" fill="url(#'+D+')"/>'+
+    /* 奥の脚 */
+    '<ellipse cx="69" cy="170" rx="18" ry="15" fill="url(#'+D+')"/>'+
+    '<ellipse cx="131" cy="170" rx="18" ry="15" fill="url(#'+D+')"/>'+
+    back+
+    /* 体 */
+    '<ellipse cx="100" cy="128" rx="48" ry="44" fill="url(#'+G+')"/>'+
+    '<ellipse cx="100" cy="146" rx="31" ry="27" fill="url(#'+B+')"/>'+
+    '<path d="M57 149 A48 44 0 0 0 143 143" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="3.4" stroke-linecap="round"/>'+
+    /* 腕 */
+    '<ellipse cx="59" cy="123" rx="8.5" ry="12" fill="url(#'+G+')" transform="rotate(-20 59 123)"/>'+
+    '<ellipse cx="141" cy="123" rx="8.5" ry="12" fill="url(#'+G+')" transform="rotate(20 141 123)"/>'+
+    neck+
+    /* 頭が体に落とす影 */
+    '<ellipse cx="100" cy="'+(hd.y+hd.r-7)+'" rx="'+(hd.r*0.8).toFixed(0)+'" ry="8" fill="#000" fill-opacity=".15"/>'+
+    head+
   '</svg>';
 }
 
@@ -1651,7 +1729,10 @@ const FX = {
       const k=1-p.age/p.life;
       cx.globalAlpha=Math.max(0,k*p.a);
       cx.globalCompositeOperation=p.add?"lighter":"source-over";
-      if(p.sq){
+      if(p.ring){
+        cx.strokeStyle=p.c; cx.lineWidth=Math.max(.6,4*k);
+        cx.beginPath(); cx.arc(p.x,p.y,p.r+p.age*p.grow,0,6.283); cx.stroke();
+      }else if(p.sq){
         cx.save();
         cx.translate(p.x,p.y); cx.rotate(p.rot+p.age*p.spin);
         cx.fillStyle=p.c;
@@ -1693,6 +1774,15 @@ function pEmber(x,y,strong){
     r:rnd(1,2.6), c:FIRE[(Math.random()*3)|0], a:.9, g:-.006, d:.985,
     life:rnd(40,95), age:0, add:true};
 }
+function pDust(x,y){
+  return {x,y, vx:rnd(-2.6,2.6), vy:rnd(-2.4,.4),
+    r:rnd(.9,2.8), c:"#C6CCDA", a:.7, g:.11, d:.92,
+    life:rnd(18,36), age:0, add:false};
+}
+function pRing(x,y,c){
+  return {x,y, vx:0, vy:0, r:8, c, a:.85, g:0, d:1,
+    life:26, age:0, add:true, ring:true, grow:4.2};
+}
 function pShard(x,y,m){
   const a=rnd(0,6.283), v=rnd(2,9);
   return {x,y, vx:Math.cos(a)*v, vy:Math.sin(a)*v-2.2,
@@ -1730,6 +1820,10 @@ function emberTick(dt){
   }
 }
 
+/* 飛んでいる隕石の数。HP は当たってから減らしたいので、その間だけ差し引かない */
+let hpPending = 0;
+let fxDay = null;
+
 /* ---- モンスターの位置（画面の座標） ---- */
 function monTarget(){
   const el=$("#mon"); if(!el) return null;
@@ -1738,15 +1832,78 @@ function monTarget(){
   return {x:r.left+r.width/2, y:r.top+r.height/2};
 }
 
+/* ---- 丸める：カードを握りつぶして、ひとつの岩にする ----
+   本物のカードはその場に残したまま上に写しを重ね、写しだけを潰す。
+   潰し終わってから一覧を描き直すので、玉はカードのあった場所にできる。 */
+function fxRoll(src, rect, col, done){
+  const g=src.cloneNode(true);
+  g.className="task crumple";
+  g.style.cssText += ";position:fixed;left:"+rect.left+"px;top:"+rect.top+"px;"+
+                     "width:"+rect.width+"px;height:"+rect.height+"px;margin:0;";
+  const cre=document.createElement("span"); cre.className="creases";
+  const rk =document.createElement("span"); rk.className="rock";
+  g.appendChild(cre); g.appendChild(rk);
+  document.body.appendChild(g);
+  src.style.visibility="hidden";
+
+  const ball=54, sx=ball/rect.width, sy=ball/rect.height, DUR=470;
+  const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
+  /* 幅と高さそのものを縮める。transform で潰すと、岩肌の模様まで歪んで縞になる */
+  const K=(fx,fy,br,rot,off)=>{
+    const w=rect.width*fx, h=rect.height*fy;
+    return {width:w.toFixed(1)+"px", height:h.toFixed(1)+"px",
+            left:(cx-w/2).toFixed(1)+"px", top:(cy-h/2).toFixed(1)+"px",
+            borderRadius:br, transform:"rotate("+rot+"deg)", offset:off};
+  };
+  g.animate([
+    K(1,1,"16px",0,0),
+    K(.94,.87,"24px",-1.8,.17),
+    K(.58,.79,"34%",2.8,.45),
+    K(sx*1.24,sy*1.14,"50%",-4.5,.73),
+    K(sx*.89,sy*.92,"50%",2.4,.88),
+    K(sx,sy,"50%",0,1)
+  ],{duration:DUR, easing:"cubic-bezier(.42,0,.26,1)", fill:"forwards"});
+
+  [g.querySelector(".tx"), g.querySelector(".box"), g.querySelector(".star")]
+    .forEach(e=>{ if(e) e.animate([{opacity:1},{opacity:0}],
+      {duration:DUR*.38, easing:"ease-in", fill:"forwards"}); });
+  g.animate([
+    {background:"#FFFFFF",  borderColor:"#E4E8F1"},
+    {background:"#EFE2D2",  borderColor:"#D8C3A6", offset:.4},
+    {background:"#6B2A08",  borderColor:"#3A1403", offset:.68},
+    {background:"#280D03",  borderColor:"#280D03"}
+  ],{duration:DUR,fill:"forwards"});
+  cre.animate([{opacity:0},{opacity:1,offset:.38},{opacity:0,offset:.72},{opacity:0}],
+    {duration:DUR,fill:"forwards"});
+  rk.animate([{opacity:0},{opacity:0,offset:.26},{opacity:1,offset:.62},{opacity:1}],
+    {duration:DUR,easing:"ease-in",fill:"forwards"});
+
+  /* 握りつぶすと埃が出る */
+  let n=0;
+  const dust=setInterval(()=>{
+    for(let i=0;i<3;i++)
+      FX.add(pDust(rect.left+rnd(.12,.88)*rect.width, rect.top+rnd(.2,.9)*rect.height));
+    FX.start();
+    if(++n>5) clearInterval(dust);
+  },58);
+
+  setTimeout(()=>{ g.remove(); done(); }, DUR+30);
+}
+
 /* ---- チェック → 隕石が飛ぶ → 当たる ---- */
 function fxStrike(rect, col, last){
   const tgt=monTarget();
-  if(!tgt){ if(last) fxDefeat(); return; }
-  if(reduced()){ fxImpact(tgt.x,tgt.y,col,last); return; }
+  if(!tgt || reduced()){
+    fxImpact(tgt?tgt.x:innerWidth/2, tgt?tgt.y:80, col, last);
+    return;
+  }
 
   const el=document.createElement("div");
   el.className="meteor"; el.style.setProperty("--c",col);
+  const rk=document.createElement("span"); rk.className="rock";
+  el.appendChild(rk);
   document.body.appendChild(el);
+  const spin=rnd(420,760)*(Math.random()<.5?-1:1);
 
   const x0=rect.left+rect.width/2, y0=rect.top+rect.height/2;
   const s0=Math.min(76, Math.max(34, rect.height*.86)), s1=26;
@@ -1765,7 +1922,9 @@ function fxStrike(rect, col, last){
     const my=u*u*y0 + 2*u*e*cyp + e*e*tgt.y;
     const sz=s0+(s1-s0)*e;
     el.style.setProperty("--s",sz.toFixed(1)+"px");
-    el.style.transform="translate3d("+mx.toFixed(1)+"px,"+my.toFixed(1)+"px,0) rotate("+(e*520).toFixed(0)+"deg)";
+    /* 光り方は変えず、岩肌だけを回す。そのほうが本物の転がりに見える */
+    el.style.transform="translate3d("+mx.toFixed(1)+"px,"+my.toFixed(1)+"px,0)";
+    rk.style.transform="rotate("+(e*spin).toFixed(0)+"deg)";
     FX.add(pFire(mx,my,sz)); FX.add(pFire(mx,my,sz));
     if(p<1){ requestAnimationFrame(step); }
     else{
@@ -1776,6 +1935,8 @@ function fxStrike(rect, col, last){
 }
 
 function fxImpact(x,y,col,last){
+  if(hpPending>0) hpPending--;
+  renderArena();                       // HP が落ちるのは、ここ
   const mon=$("#mon"), ar=$("#arena");
   if(mon){ mon.dataset.hit="1"; setTimeout(()=>{ delete mon.dataset.hit; },400); }
   if(ar && !reduced()){
@@ -1783,6 +1944,8 @@ function fxImpact(x,y,col,last){
     setTimeout(()=>ar.classList.remove("shake"),380);
   }
   if(!reduced()){
+    FX.add(pRing(x,y,"#FFD9A0"));
+    FX.add(pRing(x,y,col));
     for(let i=0;i<28;i++) FX.add(pSpark(x,y,col));
     for(let i=0;i<16;i++) FX.add(pFire(x,y,46));
     FX.start();
@@ -1826,7 +1989,8 @@ function renderArena(){
   const tasks=visibleTasks(), done=doneOf(sel);
   const total=tasks.length;
   const dn=tasks.filter(t=>done.includes(t.id)).length;
-  const alive=total-dn;
+  if(fxDay!==sel){ fxDay=sel; hpPending=0; }      // 日を移ったら持ち越さない
+  const alive=Math.max(0, Math.min(total, total-dn+hpPending));
   const m=monsterOf();
 
   if(ar.dataset.mon!==m.id){
