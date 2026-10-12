@@ -413,11 +413,13 @@ body{
 #fx{position:fixed;inset:0;width:100%;height:100%;z-index:30;pointer-events:none}
 .meteor{
   position:fixed;left:0;top:0;z-index:31;pointer-events:none;
-  width:var(--s,30px);height:var(--s,30px);
-  margin-left:calc(var(--s,30px) / -2);margin-top:calc(var(--s,30px) / -2);
-  /* 送ってもらった炎の球。黒い背景を抜いて透かしてある。
-     炎そのものが動くので、こちらで回したり光らせたりはしない */
-  background:url(fire.webp) center/contain no-repeat;
+  /* 送ってもらった炎。緑を抜いて1本の帯にしてある。
+     先端が左を向いているので、飛ぶ向きに合わせて回す。
+     大きさ・コマ送り・角度は、飛んでいる間に1コマずつ JS が決める */
+  width:var(--w,60px);height:var(--h,30px);
+  margin-left:var(--mx,-22px);margin-top:var(--my,-11px);
+  background-image:url(flame.webp);background-repeat:no-repeat;
+  transform-origin:36.4% 36.8%;            /* 炎のいちばん熱いところ＝先端 */
   filter:drop-shadow(0 0 9px rgba(255,120,20,.5));
 }
 
@@ -2076,9 +2078,10 @@ function fxStrike(rect, col, last){
   const el=document.createElement("div");
   el.className="meteor"; el.style.setProperty("--c",col);
   document.body.appendChild(el);
+  const FN=31, FAR=2;        // 炎の帯のコマ数と、1コマの横縦比
 
   const x0=rect.left+rect.width/2, y0=rect.top+rect.height/2;
-  const s0=Math.min(76, Math.max(34, rect.height*.86)), s1=34;
+  const s0=Math.min(92, Math.max(46, rect.height*1.02)), s1=44;   /* 炎は細長いぶん、球より大きめに取る */
   const lift=Math.max(110, Math.abs(y0-tgt.y)*.45);
   const cxp=(x0+tgt.x)/2 + (x0<tgt.x?-30:30);
   const cyp=Math.min(y0,tgt.y)-lift;
@@ -2092,10 +2095,19 @@ function fxStrike(rect, col, last){
     const u=1-e;
     const mx=u*u*x0 + 2*u*e*cxp + e*e*tgt.x;
     const my=u*u*y0 + 2*u*e*cyp + e*e*tgt.y;
-    const sz=s0+(s1-s0)*e;
-    el.style.setProperty("--s",sz.toFixed(1)+"px");
-    el.style.transform="translate3d("+mx.toFixed(1)+"px,"+my.toFixed(1)+"px,0)";
-    FX.add(pFire(mx,my,sz)); FX.add(pFire(mx,my,sz));
+    const sz=s0+(s1-s0)*e, w=sz*FAR;
+    /* 進む向き＝曲線の接線。先端が左向きなので180度ずらす */
+    const ang=Math.atan2(2*u*(cyp-y0) + 2*e*(tgt.y-cyp),
+                         2*u*(cxp-x0) + 2*e*(tgt.x-cxp)) * 180/Math.PI - 180;
+    const fi=Math.min(FN-1, Math.floor(p*FN));
+    el.style.setProperty("--w", w.toFixed(1)+"px");
+    el.style.setProperty("--h", sz.toFixed(1)+"px");
+    el.style.setProperty("--mx", (-w*0.364).toFixed(1)+"px");
+    el.style.setProperty("--my", (-sz*0.368).toFixed(1)+"px");
+    el.style.backgroundSize=(w*FN).toFixed(1)+"px "+sz.toFixed(1)+"px";
+    el.style.backgroundPositionX=(-fi*w).toFixed(1)+"px";
+    el.style.transform="translate3d("+mx.toFixed(1)+"px,"+my.toFixed(1)+"px,0) rotate("+ang.toFixed(1)+"deg)";
+    FX.add(pFire(mx,my,sz));   // 炎が自前の尾を持つので、粒は控えめに
     if(p<1){ requestAnimationFrame(step); }
     else{
       el.remove(); FX.flying--;
