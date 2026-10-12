@@ -551,6 +551,21 @@ body{
 .acts button:active{transform:scale(.985)}
 
 /* モンスターを選ぶ盤 */
+.fold{margin-top:22px;border-top:1px solid var(--line);padding-top:16px}
+.fold summary{
+  font-size:13px;font-weight:800;color:var(--dim);cursor:pointer;
+  list-style:none;padding:6px 0;
+}
+.fold summary::-webkit-details-marker{display:none}
+.fold summary::before{content:"▸ ";color:var(--accent)}
+.fold[open] summary::before{content:"▾ "}
+.okline{
+  margin-top:14px;padding:12px 14px;border-radius:14px;font-size:12.5px;font-weight:700;
+  background:#E6F7F1;color:#00754F;border:1px solid #C9EDE0;white-space:pre-wrap;line-height:1.7;
+}
+.okline[data-bad="1"]{background:#FFEBF3;color:#B00A46;border-color:#F8CFDF}
+.okline[hidden]{display:none}
+
 .monGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px;margin-top:4px}
 .monCell{
   padding:12px 8px 10px;border-radius:18px;border:1px solid var(--line);
@@ -665,6 +680,38 @@ body{
   <div class="sub" id="syncState"></div>
   <button class="primary" id="btnSyncNow">今すぐ同期する</button>
 
+  <div id="cfSetup">
+    <div class="now" id="cfNow"></div>
+
+    <div class="sub" style="margin-top:18px">Cloudflare に置くと、この端末に GitHub のトークンを持たせずに済みます。鍵はこのアプリ専用で、ほかには何も触れません。</div>
+
+    <div class="field">
+      <label for="cfKey">鍵（REPS_KEY）</label>
+      <div class="withEye">
+        <input id="cfKey" type="password" inputmode="text" autocomplete="off"
+               autocapitalize="off" spellcheck="false" placeholder="Cloudflare に入れたものと同じ文字列">
+        <button type="button" class="eye" id="cfKeyEye" aria-label="鍵を表示">&#128065;</button>
+      </div>
+      <div class="hint">Cloudflare の Pages → Settings → Variables and Secrets に入れた <b>REPS_KEY</b> と同じものです。</div>
+    </div>
+
+    <div class="field">
+      <label for="cfUrl">置き場の場所（ふつうは空のまま）</label>
+      <input id="cfUrl" type="text" inputmode="url" autocomplete="off"
+             autocapitalize="off" spellcheck="false" placeholder="/api/state">
+      <div class="hint">
+        Cloudflare Pages から開いているなら空で構いません。
+        ほかの場所から開くときだけ <code>https://&lt;名前&gt;.pages.dev/api/state</code> のように入れます。
+      </div>
+    </div>
+
+    <div class="okline" id="cfCheck" hidden></div>
+    <button class="ghost" id="btnCfCheck">つながるか調べる</button>
+    <button class="primary" id="btnCfSave">この鍵でつなぐ</button>
+    <button class="ghost" id="btnCfOff">Cloudflare をやめる</button>
+  </div>
+
+  <details class="fold" id="ghWrap"><summary>GitHub Gist で同期する（前からの方法）</summary>
   <div id="ghSetup">
     <div class="now" id="ghNow"></div>
 
@@ -718,6 +765,7 @@ body{
     <button class="ghost" id="btnPairCopy">つなぐリンクをコピー</button>
     <button class="ghost" id="btnSyncOff">この端末の同期をやめる</button>
   </div>
+  </details>
 
   <button class="ghost" data-close="1">閉じる</button>
 </div></div>
@@ -799,6 +847,9 @@ const LAST_KEY  = "dailyreps:sync:last";
 const ERR_KEY   = "dailyreps:sync:error";   // 黙って止まらないよう、最後の失敗を残す
 const DAYTYPE_KEY = "dailyreps:daytype";    // いま見ている日タイプ。端末ごとの見せ方で、記録ではない
 const GIST_FILE = "daily-reps.json";
+/* Cloudflare の置き場。鍵も場所も、その端末の中にだけ残る */
+const CF_KEY_LS = "dailyreps:cf:key";
+const CF_URL_LS = "dailyreps:cf:url";
 const GIST_API  = "https://api.github.com/gists";
 const $ = s=>document.querySelector(s);
 const $$ = s=>[...document.querySelectorAll(s)];
@@ -983,6 +1034,10 @@ function ls(k){ try{ return localStorage.getItem(k) || ""; }catch(e){ return "";
 function lsPut(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } }
 function lsDrop(k){ try{ localStorage.removeItem(k); }catch(e){} }
 
+function cfKey(){   return ls(CF_KEY_LS); }
+function cfUrl(){   return ls(CF_URL_LS) || "/api/state"; }
+function cfReady(){ return !!cfKey(); }
+
 function ghToken(){ return ls(TOKEN_KEY); }
 function ghGist(){  return ls(GIST_KEY); }
 function ghAuto(){  return ls(AUTO_KEY) !== "0"; }   // 既定は自動
@@ -1152,6 +1207,54 @@ function gistStore(token, id){
   };
 }
 
+/* ---- 保存先：Cloudflare（Pages Functions + D1） ----
+   版（rev）を持ち回る。こちらの版が古ければ置き場が 409 を返すので、
+   読み直して突き合わせてから出し直す。Gist のような取りこぼしが起きない。 */
+function cfStore(key, url){
+  let rev = 0;
+
+  async function go(method, body){
+    let res;
+    try{
+      const headers = {"x-reps-key": key};
+      if(body) headers["Content-Type"] = "application/json";
+      res = await withTimeout(fetch(url, {method, headers, body, cache:"no-store"}), 20000);
+    }catch(e){
+      throw {code:"net", message:"置き場に届きませんでした（"+((e && e.message)||"理由不明")+"）"};
+    }
+    let j = null;
+    try{ j = await res.json(); }catch(e){}
+    if(res.ok) return j || {};
+
+    const why = (j && j.error) || ("HTTP "+res.status);
+    if(res.status===401) throw {code:"auth", message:"鍵が違います。設定の鍵を入れ直してください。"};
+    if(res.status===409) throw {code:"conflict", message:"ほかの端末が先に書きました。", rev:(j && j.rev)|0};
+    if(res.status===413) throw {code:"size",  message:"記録が大きすぎます。"};
+    if(res.status===404) throw {code:"net",   message:"その場所に /api/state がありません。"};
+    throw {code:"net", message:why};
+  }
+
+  return {
+    name:"cf",
+    mergeBeforeSave:false,          // 版で守るので、書く前に読み直さなくていい
+    async load(){
+      const j = await go("GET");
+      rev = j.rev|0;
+      if(!j.body) return null;
+      try{ return JSON.parse(j.body); }catch(e){ return null; }
+    },
+    async save(body){
+      try{
+        const j = await go("PUT", JSON.stringify({body, rev}));
+        rev = j.rev|0;
+      }catch(e){
+        if(e && e.code==="conflict") rev = e.rev|0;   // 最新の版を控えてから投げ直す
+        throw e;
+      }
+    }
+  };
+}
+
 /* ---- 保存先：Artifact 自身のファイル ---- */
 function artifactStore(ns){
   return {
@@ -1202,6 +1305,9 @@ const SYNC = {
       if(ns) this.store = artifactStore(ns);
     }
 
+    /* Cloudflare の鍵があれば、そちらを使う（GitHub のトークンより先） */
+    if(!this.store && cfReady()) this.store = cfStore(cfKey(), cfUrl());
+
     /* アドレスに付いてきた「つなぐリンク」を先に受け取る */
     if(!this.store && readPair(location.hash)){
       const conf=readPair(location.hash);
@@ -1231,12 +1337,14 @@ const SYNC = {
     this.show("off","同期オフ",
       ghToken() || ghGist()
         ? "トークンと Gist ID の両方が必要です。足りないほうを入れてください。"
-        : "この端末はまだ同期していません。つなぐリンクを貼るか、トークンと Gist ID を入れると始まります。");
+        : "この端末はまだ同期していません。Cloudflare の鍵を入れるか、GitHub のつなぐリンクを貼ると始まります。");
   },
 
   /* 設定が変わったときに、保存先を作り直して繋ぎ直す */
   restart(){
-    this.store = ghReady() ? gistStore(ghToken(), ghGist()) : null;
+    this.store = cfReady() ? cfStore(cfKey(), cfUrl())
+               : ghReady() ? gistStore(ghToken(), ghGist())
+               : null;
     this.sent = ""; this.dirty = false;
     clearTimeout(this.timer);
     if(!this.store){ this.showOff(); return; }
@@ -2118,6 +2226,16 @@ function maskToken(t){
   return t.length<12 ? "設定済み" : t.slice(0,7)+"…"+t.slice(-4);
 }
 function renderSyncNow(){
+  const last0=ls(LAST_KEY), err0=ls(ERR_KEY);
+  const when0 = last0 ? new Date(+last0).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}) : "";
+  $("#cfNow").innerHTML =
+    '<div><b>置き場</b>'+(cfReady()
+        ? '<span>Cloudflare '+cfUrl()+'</span>'
+        : '<span class="off">未設定</span>')+'</div>'+
+    '<div><b>鍵</b>'+(cfReady()?'<span>'+maskToken(cfKey())+'</span>':'<span class="off">未設定</span>')+'</div>'+
+    (cfReady() && when0 ? '<div><b>最後の同期</b><span>'+when0+'</span></div>' : '')+
+    (cfReady() && err0  ? '<div><b>前回の失敗</b><span>'+err0+'</span></div>' : '');
+
   const t=ghToken(), g=ghGist(), last=ls(LAST_KEY), err=ls(ERR_KEY);
   const when = last ? new Date(+last).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}) : "";
   $("#ghNow").innerHTML =
@@ -2138,7 +2256,63 @@ $("#syncChip").onclick=()=>{
   $("#btnSyncOff").hidden  = !(ghToken() || ghGist());
   $("#btnPairCopy").hidden = !ghReady();
   $("#btnSyncNow").hidden  = !SYNC.store;
+
+  /* Artifact 版は設定なしで同期できるので、どちらの欄も出さない */
+  $("#cfSetup").hidden = $("#ghSetup").hidden;
+  $("#ghWrap").hidden  = $("#ghSetup").hidden;
+  $("#cfKey").value = "";
+  $("#cfUrl").value = ls(CF_URL_LS);
+  $("#cfCheck").hidden = true;
+  $("#btnCfOff").hidden = !cfReady();
+  /* Cloudflare を使っていないときだけ、GitHub の欄を開いて見せる */
+  $("#ghWrap").open = !cfReady();
+
   $("#sheetSync").classList.add("on");
+};
+$("#cfKeyEye").onclick=()=>{
+  const el=$("#cfKey");
+  el.type = el.type==="password" ? "text" : "password";
+};
+$("#btnCfSave").onclick=()=>{
+  const k=$("#cfKey").value.trim(), u=$("#cfUrl").value.trim();
+  if(!k){ toast("鍵を入れてください"); return; }
+  lsPut(CF_KEY_LS,k); lsPut(CF_URL_LS,u); lsPut(AUTO_KEY,"1");
+  $("#cfKey").value=""; $("#btnCfOff").hidden=false; $("#btnSyncNow").hidden=false;
+  $("#ghWrap").open=false;
+  renderSyncNow(); SYNC.restart();
+  toast("Cloudflare につなぎました");
+};
+$("#btnCfOff").onclick=()=>{
+  if(!confirm("この端末で Cloudflare を使うのをやめます。記録は消えません。")) return;
+  lsDrop(CF_KEY_LS); lsDrop(CF_URL_LS);
+  $("#btnCfOff").hidden=true; $("#ghWrap").open=true;
+  renderSyncNow(); SYNC.restart();
+  toast("Cloudflare をやめました");
+};
+$("#btnCfCheck").onclick=async ()=>{
+  const k=$("#cfKey").value.trim() || cfKey();
+  const u=$("#cfUrl").value.trim() || cfUrl();
+  const box=$("#cfCheck"); box.hidden=false; box.dataset.bad="0"; box.textContent="調べています…";
+  if(!k){ box.dataset.bad="1"; box.textContent="鍵がありません。上の欄に入れてから押してください。"; return; }
+  const out=[];
+  let bad=true;
+  try{
+    const r=await withTimeout(fetch(u,{headers:{"x-reps-key":k},cache:"no-store"}),20000);
+    out.push("置き場に届きました（HTTP "+r.status+"）");
+    let j=null; try{ j=await r.json(); }catch(e){}
+    if(r.status===401)      out.push("鍵が違います。Cloudflare の REPS_KEY と同じ文字列を入れてください。");
+    else if(r.status===404) out.push("その場所に /api/state がありません。Pages に functions フォルダが入っているか確かめてください。");
+    else if(r.status===500) out.push((j&&j.error) || "置き場の設定が足りません。");
+    else if(r.ok){
+      bad=false;
+      out.push("つながりました。版 "+((j&&j.rev)|0)+"・記録は"+((j&&j.body)?"あります":"まだありません"));
+    }else out.push((j&&j.error) || "うまくいきませんでした。");
+  }catch(e){
+    out.push("届きませんでした（"+((e&&e.message)||"理由不明")+"）");
+    out.push("場所が合っているか、Pages が公開されているか確かめてください。");
+  }
+  box.dataset.bad = bad ? "1" : "0";
+  box.textContent = out.join("\n");
 };
 $("#ghTokenEye").onclick=()=>{
   const el=$("#ghToken");

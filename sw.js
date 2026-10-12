@@ -1,5 +1,5 @@
 // DAILY REPS — オフライン用のキャッシュ
-const CACHE = "dailyreps-v8";
+const CACHE = "dailyreps-v9";
 const FILES = ["./", "./index.html", "./manifest.webmanifest",
                "./icon-180.png", "./icon-192.png", "./icon.png"];
 
@@ -18,7 +18,10 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
   // 同期の通信（GitHub API）は素通しする。キャッシュすると古い記録を掴む
-  if (new URL(e.request.url).origin !== self.location.origin) return;
+  const u = new URL(e.request.url);
+  if (u.origin !== self.location.origin) return;
+  // 記録のやりとり（Cloudflare の置き場）はキャッシュしない。古い記録を掴む
+  if (u.pathname.startsWith("/api/")) return;
   e.respondWith(
     fetch(e.request)
       .then(res => {
