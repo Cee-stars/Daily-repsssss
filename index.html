@@ -280,6 +280,16 @@ body{
 @keyframes drift{from{transform:translate3d(-2%,-1%,0) scale(1.04)}to{transform:translate3d(2%,2%,0) scale(1.12)}}
 @keyframes twinkle{from{opacity:.55}to{opacity:1}}
 
+/* 隕石が来るあいだだけ、空を実写に差し替える。
+   この素材はグリーンバックではないので切り抜けない。背景として、そのまま流す */
+.arena .skyFilm{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  opacity:0;pointer-events:none;transition:opacity .5s var(--ease);
+}
+.arena[data-sky="film"] .skyFilm{opacity:.94}
+.arena[data-sky="film"] .sky{opacity:.25}
+.arena .sky{transition:opacity .5s var(--ease)}
+
 /* 地平線の床。3Dの手がかり */
 .arena .floor{
   position:absolute;left:-20%;right:-20%;bottom:-34px;height:132px;
@@ -351,6 +361,17 @@ body{
 .win small{display:block;margin-top:7px;font-size:12px;font-weight:700;opacity:.75;letter-spacing:.08em}
 .arena.pin .win b{font-size:17px}
 .arena.pin .win small{display:none}
+
+/* 空が実写のとき、下の文字が埋もれないように影を敷く */
+.arena .scrim{
+  position:absolute;left:0;right:0;bottom:0;height:48%;pointer-events:none;
+  background:linear-gradient(0deg, rgba(5,8,16,.88), rgba(5,8,16,.35) 46%, transparent);
+  opacity:0;transition:opacity .5s var(--ease);
+}
+.arena[data-sky="film"] .scrim{opacity:1}
+/* 明るい空では逆光が白い輪に見えるので消す */
+.mon[data-film="1"]::before{transition:opacity .4s var(--ease)}
+.arena[data-sky="film"] .mon[data-film="1"]::before{opacity:0}
 
 /* HUD */
 .hud{position:absolute;left:18px;right:18px;bottom:15px;color:#fff;transition:opacity .4s var(--ease)}
@@ -643,9 +664,15 @@ body{
 <div class="sentinel" id="arenaTop"></div>
 <section class="arena" id="arena" data-state="live">
   <div class="sky"></div>
+  <video class="skyFilm" id="skyFilm" muted playsinline preload="auto"
+         disablepictureinpicture aria-hidden="true">
+    <source src="meteor.mp4" type="video/mp4">
+    <source src="meteor.webm" type="video/webm">
+  </video>
   <div class="floor"></div>
   <div class="stage"><div class="mon" id="mon"><div class="monInner" id="monInner"></div></div></div>
   <div class="win"><div><b>撃破</b><small id="winSub"></small></div></div>
+  <div class="scrim"></div>
   <div class="hud">
     <div class="hpTop">
       <span class="mname" id="monName"></span>
@@ -1977,6 +2004,23 @@ function monTarget(){
   return {x:r.left+r.width/2, y:r.top+r.height/2};
 }
 
+/* 隕石が来るあいだだけ、空を実写にする */
+let skyTimer=null;
+function skyFilm(on){
+  const v=$("#skyFilm"), a=$("#arena");
+  if(!v || !a || reduced()) return;
+  clearTimeout(skyTimer);
+  if(on){
+    a.dataset.sky="film";
+    try{ v.currentTime=0; const pr=v.play(); if(pr && pr.catch) pr.catch(()=>{}); }catch(e){}
+  }else{
+    skyTimer=setTimeout(()=>{
+      delete a.dataset.sky;
+      try{ v.pause(); }catch(e){}
+    }, 1100);
+  }
+}
+
 /* ---- 丸める：カードを握りつぶして、ひとつの岩にする ----
    本物のカードはその場に残したまま上に写しを重ね、写しだけを潰す。
    潰し終わってから一覧を描き直すので、玉はカードのあった場所にできる。 */
@@ -1990,6 +2034,7 @@ function fxRoll(src, rect, col, done){
   g.appendChild(cre); g.appendChild(rk);
   document.body.appendChild(g);
   src.style.visibility="hidden";
+  skyFilm(true);                      // 丸めはじめた時点で、空に隕石を呼ぶ
 
   const ball=54, sx=ball/rect.width, sy=ball/rect.height, DUR=470;
   const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
@@ -2092,6 +2137,7 @@ function fxBoom(x,y,big){
 }
 
 function fxImpact(x,y,col,last){
+  skyFilm(false);
   if(hpPending>0) hpPending--;
   renderArena();                       // HP が落ちるのは、ここ
   const mon=$("#mon"), ar=$("#arena");

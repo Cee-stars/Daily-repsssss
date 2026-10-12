@@ -1,5 +1,5 @@
 // DAILY REPS — オフライン用のキャッシュ
-const CACHE = "dailyreps-v11";
+const CACHE = "dailyreps-v13";
 const FILES = ["./", "./index.html", "./manifest.webmanifest",
                "./icon-180.png", "./icon-192.png", "./icon.png",
                "./nushi.webp", "./nushi.png", "./boom.webp"];
@@ -23,6 +23,8 @@ self.addEventListener("fetch", e => {
   if (u.origin !== self.location.origin) return;
   // 記録のやりとり（Cloudflare の置き場）はキャッシュしない。古い記録を掴む
   if (u.pathname.startsWith("/api/")) return;
+  // 動画は素通し。範囲つきの取り寄せをキャッシュに通すと、端末によって再生が壊れる
+  if (/\.(mp4|webm|mov|m4v)$/i.test(u.pathname)) return;
   e.respondWith(
     fetch(e.request)
       .then(res => {
