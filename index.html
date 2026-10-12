@@ -214,6 +214,345 @@ button{background:none;border:0;cursor:pointer}
 }
 .toast.on{opacity:1}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ============================================================
+   3D 刷新：アリーナ・隕石・燃焼
+   見せ方だけを足す層。記録の形には触れない。
+   ============================================================ */
+:root{
+  --spring:cubic-bezier(.22,1.3,.36,1);
+  --ease:cubic-bezier(.4,0,.2,1);
+  --glass:rgba(255,255,255,.72);
+  --arena-h:250px;
+  --arena-h-pin:104px;
+}
+
+/* 奥行きのある地の色。スクロールしても動かさない */
+body{
+  background:
+    radial-gradient(1100px 620px at 50% -12%, #FFFFFF 0%, rgba(255,255,255,0) 58%),
+    radial-gradient(760px 480px at 102% 2%, #E9EEFA 0%, rgba(233,238,250,0) 56%),
+    radial-gradient(640px 420px at -8% 16%, #FDF0E6 0%, rgba(253,240,230,0) 58%),
+    var(--bg);
+  background-attachment:fixed;
+}
+
+/* ---- アリーナ ---- */
+.sentinel{height:1px;margin:-1px 0 0}
+.arena{
+  position:sticky;top:calc(var(--safe-t) + 6px);z-index:12;
+  height:var(--arena-h);margin-bottom:14px;
+  border-radius:28px;overflow:hidden;isolation:isolate;
+  background:linear-gradient(168deg,#1C2238 0%,#0A0D18 52%,#161C31 100%);
+  border:1px solid rgba(255,255,255,.09);
+  box-shadow:
+    0 22px 54px rgba(10,14,28,.30),
+    0 3px 10px rgba(10,14,28,.18),
+    inset 0 1px 0 rgba(255,255,255,.12);
+  perspective:720px;perspective-origin:50% 44%;
+  transition:height .55s var(--spring), box-shadow .4s var(--ease), border-radius .4s var(--ease);
+  -webkit-user-select:none;user-select:none;
+}
+.arena.pin{height:var(--arena-h-pin);box-shadow:0 12px 32px rgba(10,14,28,.34), inset 0 1px 0 rgba(255,255,255,.10)}
+
+/* 空：オーロラ＋星 */
+.arena .sky{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(58% 44% at 20% 16%, rgba(139,92,246,.44), transparent 70%),
+    radial-gradient(54% 40% at 84% 28%, rgba(0,169,224,.32), transparent 72%),
+    radial-gradient(76% 52% at 50% 112%, rgba(255,122,24,.26), transparent 70%);
+  animation:drift 19s ease-in-out infinite alternate;
+}
+.arena .sky::after{
+  content:"";position:absolute;inset:0;opacity:.85;
+  background-image:
+    radial-gradient(1.5px 1.5px at 14% 22%, rgba(255,255,255,.95), transparent 60%),
+    radial-gradient(1.2px 1.2px at 31% 64%, rgba(255,255,255,.7), transparent 60%),
+    radial-gradient(1.6px 1.6px at 47% 18%, rgba(255,255,255,.85), transparent 60%),
+    radial-gradient(1.1px 1.1px at 63% 48%, rgba(255,255,255,.6), transparent 60%),
+    radial-gradient(1.7px 1.7px at 78% 24%, rgba(255,255,255,.9), transparent 60%),
+    radial-gradient(1.2px 1.2px at 88% 62%, rgba(255,255,255,.65), transparent 60%),
+    radial-gradient(1.4px 1.4px at 23% 82%, rgba(255,255,255,.7), transparent 60%),
+    radial-gradient(1.3px 1.3px at 69% 80%, rgba(255,255,255,.6), transparent 60%);
+  animation:twinkle 4.6s ease-in-out infinite alternate;
+}
+@keyframes drift{from{transform:translate3d(-2%,-1%,0) scale(1.04)}to{transform:translate3d(2%,2%,0) scale(1.12)}}
+@keyframes twinkle{from{opacity:.55}to{opacity:1}}
+
+/* 地平線の床。3Dの手がかり */
+.arena .floor{
+  position:absolute;left:-20%;right:-20%;bottom:-34px;height:132px;
+  background:
+    linear-gradient(0deg, rgba(255,122,24,.16), transparent 72%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 1px, transparent 1px 34px);
+  transform:rotateX(74deg);transform-origin:50% 100%;
+  -webkit-mask-image:linear-gradient(0deg,#000 10%,transparent 92%);
+          mask-image:linear-gradient(0deg,#000 10%,transparent 92%);
+  transition:opacity .4s var(--ease);
+}
+.arena.pin .floor{opacity:0}
+
+.arena .stage{
+  position:absolute;left:0;right:0;top:0;bottom:44px;
+  display:grid;place-items:center;transform-style:preserve-3d;
+  transition:bottom .5s var(--spring);
+}
+.arena.pin .stage{bottom:30px}
+
+.mon{
+  position:relative;width:166px;height:166px;transform-style:preserve-3d;
+  animation:float 5.4s ease-in-out infinite;
+  transition:width .55s var(--spring), height .55s var(--spring), opacity .45s var(--ease);
+}
+.arena.pin .mon{width:72px;height:72px}
+.mon svg{width:100%;height:100%;display:block;filter:drop-shadow(0 20px 28px rgba(0,0,0,.5))}
+.mon .flash{
+  position:absolute;inset:6%;border-radius:50%;background:#fff;opacity:0;
+  mix-blend-mode:screen;pointer-events:none;
+}
+@keyframes float{
+  0%,100%{transform:translate3d(0,-6px,0) rotateZ(-1.8deg) rotateY(-6deg)}
+  50%    {transform:translate3d(0,8px,0)  rotateZ(1.8deg)  rotateY(6deg)}
+}
+.mon[data-hit="1"]{animation:hit .36s var(--spring)}
+.mon[data-hit="1"] .flash{animation:flash .32s ease-out}
+@keyframes hit{
+  0%  {transform:none}
+  16% {transform:translate3d(12px,-7px,34px) scale3d(1.16,.82,1)}
+  44% {transform:translate3d(-7px,4px,0)    scale3d(.88,1.14,1)}
+  72% {transform:translate3d(3px,-1px,0)    scale3d(1.04,.97,1)}
+  100%{transform:none}
+}
+@keyframes flash{from{opacity:.9}to{opacity:0}}
+
+/* 撃破 */
+.arena[data-state="win"] .mon{opacity:0;transform:scale(.36);animation:none}
+.arena[data-state="win"] .floor{opacity:.5}
+.win{
+  position:absolute;left:0;right:0;top:0;bottom:44px;display:grid;place-items:center;
+  text-align:center;color:#fff;pointer-events:none;
+  opacity:0;transform:translateY(12px) scale(.94);
+  transition:opacity .6s var(--spring), transform .6s var(--spring);
+}
+.arena[data-state="win"] .win{opacity:1;transform:none}
+.win b{display:block;font-family:var(--display);font-size:26px;font-weight:900;letter-spacing:.04em;
+  text-shadow:0 2px 24px rgba(255,180,90,.6)}
+.win small{display:block;margin-top:7px;font-size:12px;font-weight:700;opacity:.75;letter-spacing:.08em}
+.arena.pin .win b{font-size:17px}
+.arena.pin .win small{display:none}
+
+/* HUD */
+.hud{position:absolute;left:18px;right:18px;bottom:15px;color:#fff;transition:opacity .4s var(--ease)}
+.hpTop{display:flex;align-items:baseline;gap:9px;margin-bottom:8px}
+.hpTop .mname{font-family:var(--display);font-size:13px;font-weight:900;letter-spacing:.07em}
+.hpTop .mtag{font-size:10.5px;font-weight:800;opacity:.5;letter-spacing:.1em}
+.hpTop .hpN{margin-left:auto;font-family:var(--mono);font-size:12px;opacity:.78}
+.hp{display:flex;gap:3px;height:7px}
+.hp i{
+  flex:1;border-radius:3px;background:rgba(255,255,255,.15);
+  transition:background .35s var(--ease), transform .45s var(--spring), box-shadow .35s var(--ease);
+  transform-origin:center;
+}
+.hp i.live{
+  background:linear-gradient(180deg,#FFAE5C,#FF5A18);
+  box-shadow:0 0 10px rgba(255,110,30,.55);
+}
+.hp i.gone{transform:scaleY(.38);background:rgba(255,255,255,.13);box-shadow:none}
+
+/* モンスターを選ぶボタン */
+.monPick{
+  position:absolute;right:12px;top:12px;width:34px;height:34px;border-radius:12px;
+  background:rgba(255,255,255,.12);color:#fff;font-size:14px;font-weight:800;
+  border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  display:grid;place-items:center;transition:transform .3s var(--spring), background .3s var(--ease);
+}
+.monPick:active{transform:scale(.9);background:rgba(255,255,255,.22)}
+
+/* 画面ゆれ */
+.arena.shake{animation:shake .34s var(--ease)}
+@keyframes shake{
+  0%,100%{translate:0 0}
+  18%{translate:-5px 2px} 36%{translate:4px -2px}
+  58%{translate:-3px 1px} 80%{translate:2px -1px}
+}
+
+/* ---- 隕石 ---- */
+#fx{position:fixed;inset:0;width:100%;height:100%;z-index:30;pointer-events:none}
+.meteor{
+  position:fixed;left:0;top:0;z-index:31;pointer-events:none;
+  width:var(--s,30px);height:var(--s,30px);margin-left:calc(var(--s,30px) / -2);margin-top:calc(var(--s,30px) / -2);
+  border-radius:50%;
+  /* 岩と炎の塊。カテゴリの色は、まわりの光輪で見せる */
+  background:
+    radial-gradient(circle at 34% 27%, #FFFCF2 0%, #FFE2AC 13%, #FF9A2E 31%, #C8450B 57%, #4C1B06 83%, #280D03 100%);
+  box-shadow:
+    0 0 18px 4px rgba(255,150,50,.6),
+    0 0 46px 12px rgba(255,86,0,.26),
+    inset -4px -5px 12px rgba(0,0,0,.52);
+}
+.meteor::before,.meteor::after{content:"";position:absolute;border-radius:50%;pointer-events:none}
+.meteor::before{
+  inset:-34%;opacity:.5;
+  background:radial-gradient(circle, var(--c) 0%, transparent 62%);
+}
+.meteor::after{
+  inset:-20%;
+  background:radial-gradient(circle, rgba(255,186,96,.42), transparent 64%);
+}
+
+/* ---- タスクカード：立体と燃焼 ---- */
+.task{
+  position:relative;overflow:hidden;
+  box-shadow:0 1px 2px rgba(21,26,36,.05), 0 7px 20px rgba(21,26,36,.05);
+  transition:transform .3s var(--spring), box-shadow .32s var(--ease),
+             background .3s var(--ease), border-color .3s var(--ease), opacity .3s var(--ease);
+}
+.task:active{transform:perspective(720px) rotateX(3.5deg) scale(.976)}
+.task .box{
+  transition:transform .3s var(--spring), background .25s var(--ease), border-color .25s var(--ease);
+  box-shadow:inset 0 1px 2px rgba(21,26,36,.06);
+}
+.task:active .box{transform:scale(.88)}
+
+/* 燃え具合。0→3 で強まる */
+.task[data-burn="1"]{--bl:.34}
+.task[data-burn="2"]{--bl:.68}
+.task[data-burn="3"]{--bl:1}
+.task[data-burn]{
+  border-color:rgba(255,106,26,calc(.16 + var(--bl) * .6));
+  box-shadow:0 1px 2px rgba(21,26,36,.05), 0 10px 28px rgba(255,74,0,calc(var(--bl) * .32));
+}
+.task[data-burn]::before{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:52%;pointer-events:none;
+  background:linear-gradient(0deg,
+    rgba(255,86,10,calc(var(--bl) * .34)) 0%,
+    rgba(255,150,40,calc(var(--bl) * .12)) 44%,
+    transparent 88%);
+  animation:emberPulse 2.6s ease-in-out infinite;
+}
+@keyframes emberPulse{0%,100%{opacity:.7}50%{opacity:1}}
+
+/* 燃え尽きる */
+.task.burning{animation:char .95s var(--ease) forwards}
+.task.burning::after{
+  content:"";position:absolute;left:-6%;right:-6%;bottom:0;height:0;pointer-events:none;
+  background:linear-gradient(0deg,
+    #120B04 0%, #2E1A07 30%, #8E3208 56%, #FF6A0D 76%, #FFC24A 90%, rgba(255,214,130,0) 100%);
+  box-shadow:0 -6px 22px rgba(255,120,20,.55);
+  animation:charRise .95s var(--ease) forwards;
+}
+@keyframes char{
+  0%  {filter:none}
+  40% {filter:sepia(.55) saturate(2.2) brightness(.95)}
+  78% {filter:brightness(.42) saturate(.35);opacity:.8}
+  100%{filter:brightness(.18) saturate(0);opacity:0;transform:translateY(7px) scale(.972)}
+}
+@keyframes charRise{
+  0%  {height:0;opacity:1}
+  72% {height:116%;opacity:.96}
+  100%{height:150%;opacity:0}
+}
+.task.gone{
+  height:0!important;min-height:0;padding-top:0;padding-bottom:0;
+  margin-bottom:0;border-width:0;opacity:0;overflow:hidden;
+  transition:height .44s var(--ease), padding .44s var(--ease),
+             margin .44s var(--ease), opacity .3s var(--ease);
+}
+
+/* 灰：過ぎた日のやらなかったぶん。記録は消していない */
+.task[data-ash="1"]{
+  background:linear-gradient(180deg,#F4F5F8 0%,#E8EAEF 100%);
+  border-color:#DBDEE6;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7), 0 1px 2px rgba(21,26,36,.04);
+}
+.task[data-ash="1"] .nm{color:#9AA0AE}
+.task[data-ash="1"] .nt{color:#AAB0BC}
+.task[data-ash="1"] .box{border-color:#CBD0DA;background:#EEF0F4;box-shadow:none;color:transparent}
+.task[data-ash="1"] .star{opacity:.35}
+.task[data-ash="1"]::before{
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background-image:
+    radial-gradient(2px 2px at 16% 34%, rgba(70,72,82,.17), transparent 62%),
+    radial-gradient(1.6px 1.6px at 44% 68%, rgba(70,72,82,.13), transparent 62%),
+    radial-gradient(2.2px 2.2px at 73% 28%, rgba(70,72,82,.15), transparent 62%),
+    radial-gradient(1.5px 1.5px at 88% 72%, rgba(70,72,82,.12), transparent 62%);
+}
+
+/* 完了ぶんを開く帯 */
+.doneChip{
+  width:100%;margin-top:4px;padding:13px;border-radius:16px;
+  background:var(--glass);border:1px solid var(--line);
+  backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);
+  font-size:13px;font-weight:800;color:var(--dim);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:transform .3s var(--spring);
+}
+.doneChip:active{transform:scale(.98)}
+.doneChip b{font-family:var(--mono);color:var(--accent)}
+.allClear{
+  text-align:center;padding:26px 16px;font-family:var(--display);
+  font-size:17px;font-weight:900;line-height:1.6;
+}
+.allClear small{display:block;margin-top:6px;font-family:var(--ui);font-size:12.5px;font-weight:700;color:var(--dim)}
+
+/* ---- 既存カードの質感を上げる ---- */
+.hero,.week{
+  box-shadow:0 1px 2px rgba(21,26,36,.04), 0 10px 32px rgba(21,26,36,.055);
+  background:linear-gradient(180deg,#FFFFFF 0%,#FDFDFE 100%);
+}
+.plate{
+  background:linear-gradient(180deg,#EEF1F7,#E3E8F2);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9);
+  transition:height .34s var(--spring), background .3s var(--ease), box-shadow .3s var(--ease);
+}
+.plate.on{box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 3px 9px rgba(21,26,36,.18)}
+.seg button,.week .wt button{transition:transform .25s var(--spring), background .25s var(--ease)}
+.seg button:active,.week .wt button:active{transform:scale(.95)}
+.acts button{
+  box-shadow:0 1px 2px rgba(21,26,36,.04), 0 6px 16px rgba(21,26,36,.04);
+  transition:transform .28s var(--spring);
+}
+.acts button:active{transform:scale(.985)}
+
+/* モンスターを選ぶ盤 */
+.monGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px;margin-top:4px}
+.monCell{
+  padding:12px 8px 10px;border-radius:18px;border:1px solid var(--line);
+  background:linear-gradient(168deg,#1C2238,#0A0D18);
+  display:grid;justify-items:center;gap:7px;
+  transition:transform .3s var(--spring), box-shadow .3s var(--ease);
+}
+.monCell svg{width:62px;height:62px;display:block}
+.monCell span{font-size:11.5px;font-weight:800;color:rgba(255,255,255,.8)}
+.monCell:active{transform:scale(.95)}
+.monCell[data-on="1"]{
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(255,122,24,.22), 0 10px 26px rgba(10,14,28,.3);
+}
+.monCell[data-on="1"] span{color:#fff}
+
+@media (prefers-reduced-motion:reduce){
+  .mon,.arena .sky,.arena .sky::after,.task[data-burn]::before{animation:none!important}
+  .arena.shake{animation:none!important}
+}
+
+/* 燃え尽きるまでの帯 */
+.burnLine{
+  display:flex;align-items:center;gap:9px;margin:20px 0 2px;padding:12px 14px;
+  border-radius:16px;font-size:12.5px;font-weight:800;
+  color:#8A3100;background:linear-gradient(180deg,#FFF1E4,#FFE6D2);
+  border:1px solid rgba(255,122,24,.28);
+  box-shadow:0 6px 18px rgba(255,96,0,.14);
+}
+.burnLine i{
+  font-style:normal;font-size:15px;
+  animation:emberPulse 1.6s ease-in-out infinite;
+}
+.burnLine b{font-family:var(--mono);color:#C4500A}
+
+.mon .monInner{width:100%;height:100%;display:block}
 </style>
 </head>
 <body>
@@ -224,6 +563,23 @@ button{background:none;border:0;cursor:pointer}
   <button class="sync" id="syncChip" hidden></button>
   <div class="streak"><b id="streak">0</b><small>日連続</small></div>
 </div>
+
+<div class="sentinel" id="arenaTop"></div>
+<section class="arena" id="arena" data-state="live">
+  <div class="sky"></div>
+  <div class="floor"></div>
+  <div class="stage"><div class="mon" id="mon"><div class="monInner" id="monInner"></div></div></div>
+  <div class="win"><div><b>撃破</b><small id="winSub"></small></div></div>
+  <div class="hud">
+    <div class="hpTop">
+      <span class="mname" id="monName"></span>
+      <span class="mtag" id="monTag"></span>
+      <span class="hpN" id="hpN"></span>
+    </div>
+    <div class="hp" id="hp"></div>
+  </div>
+  <button class="monPick" id="btnMon" aria-label="モンスターを選ぶ">⇄</button>
+</section>
 
 <section class="hero">
   <div class="seg" id="daySeg">
@@ -332,6 +688,15 @@ button{background:none;border:0;cursor:pointer}
   <button class="ghost" data-close="1">閉じる</button>
 </div></div>
 
+<div class="sheet" id="sheetMon"><div class="inner">
+  <h3>モンスターを選ぶ</h3>
+  <div class="sub">タスクを1つ終えるたび、そのタスクが隕石になって飛んでいき、こいつに当たります。その日のぶんを全部終えると倒せます。
+選んだモンスターはこの端末だけの見せ方です。記録には入りません。</div>
+  <div class="monGrid" id="monGrid"></div>
+  <button class="ghost" data-close="1">閉じる</button>
+</div></div>
+
+<canvas id="fx" aria-hidden="true"></canvas>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -964,12 +1329,23 @@ function tasksFor(d){
   return t ? state.tasks.filter(x => x.dayType===t || x.dayType==="both") : state.tasks;
 }
 
-function toggle(id){
+function toggle(id, src){
+  const on = !isDone(sel,id);
+  /* 隕石はカードがあった場所から飛ばすので、消える前に位置を控える */
+  const rect = (on && src) ? src.getBoundingClientRect() : null;
+
   const arr = doneOf(sel).slice();
   const i = arr.indexOf(id);
   if(i>=0) arr.splice(i,1); else arr.push(id);
   if(arr.length) state.log[sel]=arr; else delete state.log[sel];
-  save({day:sel, id}); render();
+  save({day:sel, id});
+
+  const vis = visibleTasks();
+  const last = vis.length>0 && vis.every(t=>arr.includes(t.id));
+  const cat = C[(state.tasks.find(t=>t.id===id)||{}).cat] || C.speaking;
+
+  render();
+  if(on && rect) fxStrike(rect, cat.c, last);
 }
 
 /* ---- 連続日数：コア習慣を全部やった日が続いた数 ---- */
@@ -1020,6 +1396,9 @@ function render(){
   renderDayMode();
   renderWeek();
   renderTasks();
+  renderArena();
+  updatePin();
+  if(emberNeed()) FX.start();
 }
 
 function renderWeek(){
@@ -1049,34 +1428,448 @@ function renderTasks(){
   const el=$("#tasks"); el.innerHTML="";
   const done=doneOf(sel);
   const shown=visibleTasks();
-  for(const cat of CATS){
-    const list=shown.filter(t=>t.cat===cat.id);
-    if(!list.length) continue;
-    const h=document.createElement("div");
-    h.className="cat"; h.style.setProperty("--c",cat.c);
-    h.innerHTML='<i></i><h2>'+cat.name+'</h2><span>'+
-      list.filter(t=>done.includes(t.id)).length+"/"+list.length+'</span>';
-    el.appendChild(h);
-    for(const t of list){
-      const b=document.createElement("button");
-      b.className="task";
-      b.style.setProperty("--c",cat.c);
-      b.style.setProperty("--soft",cat.soft);
-      if(done.includes(t.id)) b.dataset.done="1";
-      b.innerHTML='<span class="box">✓</span><span class="tx"><span class="nm"></span>'+
-        (t.note?'<span class="nt"></span>':'')+'</span>'+(t.core?'<span class="star">★</span>':'');
-      b.querySelector(".nm").textContent=t.name;
-      if(t.note) b.querySelector(".nt").textContent=t.note;
-      b.onclick=()=>toggle(t.id);
-      el.appendChild(b);
-    }
-  }
+  const past=sel<today();
+  const bt=burnTier();
+  const doneCount=shown.filter(t=>done.includes(t.id)).length;
+  el.dataset.burnTier=String(bt);
+
   if(!shown.length){
     el.innerHTML='<div class="note" style="padding:30px 0">'+
       (state.tasks.length
         ? "この日タイプに出すタスクはありません。上の切り替えを変えるか、「タスクを編集」で日タイプを見直してください。"
         : "タスクがありません。下の「タスクを編集」から追加してください。")+'</div>';
+    return;
   }
+
+  /* 終わりが近いほど強く燻る。急かすための帯 */
+  if(bt){
+    const w=document.createElement("div");
+    w.className="burnLine";
+    w.innerHTML='<i>&#128293;</i><span>やらなかったぶんは <b>0:00</b> に燃えて消えます</span>';
+    el.appendChild(w);
+  }
+
+  let drew=0;
+  for(const cat of CATS){
+    const list=shown.filter(t=>t.cat===cat.id);
+    if(!list.length) continue;
+    /* 終わったぶんは一時的に隠す。残りがひと目で分かるように */
+    const vis = showDone ? list : list.filter(t=>!done.includes(t.id));
+    if(!vis.length) continue;
+
+    const h=document.createElement("div");
+    h.className="cat"; h.style.setProperty("--c",cat.c);
+    h.innerHTML='<i></i><h2>'+cat.name+'</h2><span>'+
+      list.filter(t=>done.includes(t.id)).length+"/"+list.length+'</span>';
+    el.appendChild(h);
+
+    for(const t of vis){
+      const b=document.createElement("button");
+      b.className="task";
+      b.style.setProperty("--c",cat.c);
+      b.style.setProperty("--soft",cat.soft);
+      const d=done.includes(t.id);
+      if(d) b.dataset.done="1";
+      else if(past) b.dataset.ash="1";       // 過ぎた日のやらなかったぶんは灰
+      else if(bt)  b.dataset.burn=String(bt);
+      b.innerHTML='<span class="box">&#10003;</span><span class="tx"><span class="nm"></span>'+
+        (t.note?'<span class="nt"></span>':'')+'</span>'+(t.core?'<span class="star">&#9733;</span>':'');
+      b.querySelector(".nm").textContent=t.name;
+      if(t.note) b.querySelector(".nt").textContent=t.note;
+      b.onclick=()=>toggle(t.id,b);
+      el.appendChild(b);
+      drew++;
+    }
+  }
+
+  if(!drew && doneCount){
+    const w=document.createElement("div");
+    w.className="allClear";
+    w.innerHTML='全部やりきった。<small>'+monsterOf().name+' は倒れた。</small>';
+    el.appendChild(w);
+  }
+
+  if(doneCount){
+    const c=document.createElement("button");
+    c.className="doneChip";
+    c.innerHTML = showDone
+      ? '終わったぶん <b>'+doneCount+'</b> をしまう'
+      : '終わったぶん <b>'+doneCount+'</b> を見る';
+    c.onclick=()=>{ showDone=!showDone; lsPut(SHOW_KEY, showDone?"1":"0"); renderTasks(); };
+    el.appendChild(c);
+  }
+}
+
+
+/* ============================================================
+   3D 演出：アリーナ・隕石・燃焼
+   記録（state）には一切触れない。見せ方だけを足す層。
+   ============================================================ */
+const MON_KEY  = "dailyreps:monster";     // 端末ごとの見せ方。記録ではない
+const SHOW_KEY = "dailyreps:showdone";
+const BURN_FROM = 20;                      // 何時から燻りはじめるか
+
+const reduced = () => {
+  try{ return matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ return false; }
+};
+
+/* ---- モンスター ----
+   どれを出すかは端末ごとに選べる。倒す相手なので、少し怖くて少し愛嬌がある形にした。 */
+const MONSTERS = [
+  {id:"norma", name:"ノルマ",   tag:"QUOTA",  lite:"#C9B6FF", hue:"#8B5CF6", dark:"#2B0A5E", ink:"#1C0A3E", eye:"#FFE08A"},
+  {id:"nebo",  name:"ネボスケ", tag:"SNOOZE", lite:"#A8E6FF", hue:"#2DA8E0", dark:"#06324B", ink:"#042334", eye:"#FFFFFF"},
+  {id:"sabo",  name:"サボリン", tag:"SLACK",  lite:"#A4F5DC", hue:"#17B890", dark:"#033B33", ink:"#02261F", eye:"#FFF3B0"},
+  {id:"gengo", name:"ゲンゴウ", tag:"SILENCE",lite:"#FFC68E", hue:"#FF7A18", dark:"#5A1C00", ink:"#3A1200", eye:"#FFFFFF"},
+  {id:"mugen", name:"ムゲン",   tag:"ENDLESS",lite:"#9AA0BC", hue:"#3B3F52", dark:"#05060C", ink:"#020306", eye:"#79F6FF"}
+];
+
+function monsterOf(){
+  const id = ls(MON_KEY);
+  return MONSTERS.find(m=>m.id===id) || MONSTERS[0];
+}
+
+/* 球体に見えるよう、放射グラデーションと縁の光で奥行きを出す。
+   id は描く場所ごとに変える（同じ id が2つあると片方のグラデーションが効かない） */
+function monsterSVG(m,uid){
+  const g="g"+uid+m.id, h="h"+uid+m.id, cp="c"+uid+m.id;
+  const body =
+    '<circle cx="100" cy="102" r="56" fill="url(#'+g+')"/>'+
+    '<path d="M48 124 A56 56 0 0 0 152 124" fill="none" stroke="rgba(255,255,255,.26)" stroke-width="3.5" stroke-linecap="round"/>'+
+    '<ellipse cx="76" cy="74" rx="17" ry="11" fill="rgba(255,255,255,.42)" transform="rotate(-28 76 74)"/>';
+
+  const face = {
+    norma:
+      '<ellipse cx="100" cy="100" rx="31" ry="33" fill="#fff"/>'+
+      '<circle cx="104" cy="104" r="16" fill="'+m.eye+'"/>'+
+      '<circle cx="104" cy="104" r="8.5" fill="'+m.ink+'"/>'+
+      '<circle cx="95" cy="93" r="5.5" fill="#fff" opacity=".95"/>'+
+      '<path d="M84 142 Q100 153 116 142" stroke="'+m.ink+'" stroke-width="5.5" fill="none" stroke-linecap="round"/>',
+    nebo:
+      '<path d="M68 100 Q81 88 94 100" stroke="'+m.ink+'" stroke-width="6.5" fill="none" stroke-linecap="round"/>'+
+      '<path d="M106 100 Q119 88 132 100" stroke="'+m.ink+'" stroke-width="6.5" fill="none" stroke-linecap="round"/>'+
+      '<ellipse cx="100" cy="129" rx="10" ry="12" fill="'+m.ink+'"/>'+
+      '<text x="140" y="56" font-size="22" font-weight="900" fill="#fff" opacity=".6" font-family="system-ui">z</text>'+
+      '<text x="156" y="38" font-size="15" font-weight="900" fill="#fff" opacity=".4" font-family="system-ui">z</text>',
+    sabo:
+      '<circle cx="100" cy="72" r="11" fill="#fff"/><circle cx="101" cy="73" r="5.5" fill="'+m.ink+'"/>'+
+      '<circle cx="78" cy="108" r="13" fill="#fff"/><circle cx="80" cy="110" r="6.5" fill="'+m.ink+'"/>'+
+      '<circle cx="122" cy="108" r="13" fill="#fff"/><circle cx="124" cy="110" r="6.5" fill="'+m.ink+'"/>'+
+      '<path d="M82 140 Q91 132 100 140 Q109 148 118 140" stroke="'+m.ink+'" stroke-width="5" fill="none" stroke-linecap="round"/>',
+    gengo:
+      '<path d="M68 76 L98 90" stroke="'+m.ink+'" stroke-width="7.5" stroke-linecap="round"/>'+
+      '<path d="M132 76 L102 90" stroke="'+m.ink+'" stroke-width="7.5" stroke-linecap="round"/>'+
+      '<ellipse cx="80" cy="104" rx="13" ry="12.5" fill="#fff"/><circle cx="83" cy="106" r="6.5" fill="'+m.ink+'"/>'+
+      '<ellipse cx="120" cy="104" rx="13" ry="12.5" fill="#fff"/><circle cx="117" cy="106" r="6.5" fill="'+m.ink+'"/>'+
+      '<path d="M76 130 Q100 154 124 130 Z" fill="'+m.ink+'"/>'+
+      '<path d="M87 134 L93 145 L98 134 Z" fill="#fff"/>'+
+      '<path d="M104 134 L109 145 L114 134 Z" fill="#fff"/>',
+    mugen:
+      '<circle cx="100" cy="100" r="24" fill="'+m.eye+'" opacity=".16"/>'+
+      '<circle cx="100" cy="100" r="14" fill="'+m.eye+'"/>'+
+      '<circle cx="100" cy="100" r="5.5" fill="'+m.ink+'"/>'+
+      '<path d="M86 140 Q100 134 114 140" stroke="'+m.eye+'" stroke-width="4" fill="none" stroke-linecap="round" opacity=".7"/>'
+  }[m.id] || "";
+
+  const back = {
+    norma:
+      '<path d="M58 66 C44 44 42 26 50 16 C62 26 72 44 79 59 Z" fill="url(#'+h+')"/>'+
+      '<path d="M142 66 C156 44 158 26 150 16 C138 26 128 44 121 59 Z" fill="url(#'+h+')"/>',
+    nebo:
+      '<path d="M52 74 C28 62 16 78 25 95 C34 110 52 106 60 95 Z" fill="url(#'+h+')"/>'+
+      '<path d="M148 74 C172 62 184 78 175 95 C166 110 148 106 140 95 Z" fill="url(#'+h+')"/>',
+    sabo:
+      '<path d="M72 54 L60 16 L90 44 Z" fill="url(#'+h+')"/>'+
+      '<path d="M100 44 L100 6 L117 38 Z" fill="url(#'+h+')"/>'+
+      '<path d="M128 54 L142 18 L112 44 Z" fill="url(#'+h+')"/>',
+    gengo:
+      '<path d="M60 62 C50 40 53 26 62 20 C71 31 76 48 78 59 Z" fill="url(#'+h+')"/>'+
+      '<path d="M140 62 C150 40 147 26 138 20 C129 31 124 48 122 59 Z" fill="url(#'+h+')"/>',
+    mugen:
+      '<ellipse cx="100" cy="104" rx="82" ry="23" fill="none" stroke="'+m.eye+
+        '" stroke-width="4" opacity=".5" transform="rotate(-18 100 104)"/>'
+  }[m.id] || "";
+
+  /* ムゲンの輪は、体の手前にもう一度描いて輪の中を通っているように見せる */
+  const front = m.id==="mugen"
+    ? '<ellipse cx="100" cy="104" rx="82" ry="23" fill="none" stroke="'+m.eye+
+      '" stroke-width="4" opacity=".85" transform="rotate(-18 100 104)" clip-path="url(#'+cp+')"/>'
+    : "";
+
+  return '<svg viewBox="0 0 200 200" aria-hidden="true">'+
+    '<defs>'+
+      '<radialGradient id="'+g+'" cx="34%" cy="26%" r="82%">'+
+        '<stop offset="0" stop-color="'+m.lite+'"/>'+
+        '<stop offset=".52" stop-color="'+m.hue+'"/>'+
+        '<stop offset="1" stop-color="'+m.dark+'"/>'+
+      '</radialGradient>'+
+      '<linearGradient id="'+h+'" x1="0" y1="0" x2="0" y2="1">'+
+        '<stop offset="0" stop-color="'+m.lite+'"/>'+
+        '<stop offset="1" stop-color="'+m.dark+'"/>'+
+      '</linearGradient>'+
+      '<clipPath id="'+cp+'"><rect x="0" y="104" width="200" height="96"/></clipPath>'+
+    '</defs>'+
+    '<ellipse cx="100" cy="180" rx="44" ry="8" fill="rgba(0,0,0,.4)"/>'+
+    back + body + face + front +
+  '</svg>';
+}
+
+/* ---- 粒（炎・火花・残り火・破片） ---- */
+const FX = {
+  cv:null, cx:null, ps:[], run:false, dpr:1, flying:0, last:0, acc:0,
+
+  init(){
+    this.cv=$("#fx"); if(!this.cv) return;
+    this.cx=this.cv.getContext("2d");
+    this.size();
+    addEventListener("resize", ()=>this.size(), {passive:true});
+  },
+  size(){
+    if(!this.cv) return;
+    this.dpr=Math.min(2, window.devicePixelRatio||1);
+    this.cv.width=Math.round(innerWidth*this.dpr);
+    this.cv.height=Math.round(innerHeight*this.dpr);
+  },
+  add(p){ if(this.ps.length<260) this.ps.push(p); },
+  start(){
+    if(this.run || !this.cx) return;
+    this.run=true; this.last=performance.now();
+    requestAnimationFrame(t=>this.tick(t));
+  },
+  tick(ts){
+    const dt=Math.min(3, (ts-this.last)/16.67); this.last=ts;
+    const cx=this.cx;
+    cx.clearRect(0,0,this.cv.width,this.cv.height);
+    cx.save(); cx.scale(this.dpr,this.dpr);
+
+    for(let i=this.ps.length-1;i>=0;i--){
+      const p=this.ps[i];
+      p.age+=dt;
+      if(p.age>=p.life){ this.ps.splice(i,1); continue; }
+      p.vy+=p.g*dt;
+      const d=Math.pow(p.d,dt); p.vx*=d; p.vy*=d;
+      p.x+=p.vx*dt; p.y+=p.vy*dt;
+      const k=1-p.age/p.life;
+      cx.globalAlpha=Math.max(0,k*p.a);
+      cx.globalCompositeOperation=p.add?"lighter":"source-over";
+      if(p.sq){
+        cx.save();
+        cx.translate(p.x,p.y); cx.rotate(p.rot+p.age*p.spin);
+        cx.fillStyle=p.c;
+        const s=p.r*(.4+k*.6);
+        cx.fillRect(-s/2,-s/2,s,s*1.25);
+        cx.restore();
+      }else{
+        cx.beginPath();
+        cx.arc(p.x,p.y,Math.max(.4,p.r*k),0,6.283);
+        cx.fillStyle=p.c; cx.fill();
+      }
+    }
+    cx.restore();
+    cx.globalAlpha=1; cx.globalCompositeOperation="source-over";
+
+    emberTick(dt);
+
+    if(this.ps.length || this.flying || emberNeed()) requestAnimationFrame(t=>this.tick(t));
+    else this.run=false;
+  }
+};
+
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const FIRE=["#FFF0C2","#FFC247","#FF8A1E","#FF4D0A"];
+
+function pFire(x,y,s){
+  return {x:x+rnd(-s/4,s/4), y:y+rnd(-s/4,s/4), vx:rnd(-.7,.7), vy:rnd(-.5,.9),
+    r:rnd(s*.10,s*.22), c:FIRE[(Math.random()*3)|0], a:.82, g:.012, d:.93,
+    life:rnd(12,24), age:0, add:true};
+}
+function pSpark(x,y,c){
+  const a=rnd(0,6.283), v=rnd(2.2,8.5);
+  return {x,y, vx:Math.cos(a)*v, vy:Math.sin(a)*v - 1,
+    r:rnd(1.4,3.6), c:Math.random()<.5?c:FIRE[(Math.random()*4)|0], a:1, g:.16, d:.9,
+    life:rnd(22,46), age:0, add:true};
+}
+function pEmber(x,y,strong){
+  return {x,y, vx:rnd(-.35,.35), vy:rnd(-1.5,-.5)*(strong?1.7:1),
+    r:rnd(1,2.6), c:FIRE[(Math.random()*3)|0], a:.9, g:-.006, d:.985,
+    life:rnd(40,95), age:0, add:true};
+}
+function pShard(x,y,m){
+  const a=rnd(0,6.283), v=rnd(2,9);
+  return {x,y, vx:Math.cos(a)*v, vy:Math.sin(a)*v-2.2,
+    r:rnd(5,13), c:[m.lite,m.hue,m.dark][(Math.random()*3)|0], a:1, g:.3, d:.985,
+    life:rnd(44,80), age:0, add:false, sq:true, rot:rnd(0,6.283), spin:rnd(-.12,.12)};
+}
+
+/* ---- 燃焼度：その日の終わりに近いほど強い ---- */
+function burnLevel(){
+  if(sel!==today()) return 0;
+  const n=new Date(), h=n.getHours()+n.getMinutes()/60;
+  if(h<BURN_FROM) return 0;
+  return Math.min(1,(h-BURN_FROM)/(24-BURN_FROM));
+}
+function burnTier(){
+  const b=burnLevel();
+  return b<=0 ? 0 : b<.34 ? 1 : b<.7 ? 2 : 3;
+}
+function emberNeed(){
+  return burnLevel()>=.34 && !reduced() && document.visibilityState==="visible"
+      && document.querySelector('.task[data-burn]') !== null;
+}
+function emberTick(dt){
+  if(!emberNeed()) return;
+  FX.acc += dt*burnLevel()*0.085;
+  let guard=0;
+  while(FX.acc>=1 && guard++<6){
+    FX.acc-=1;
+    const cards=$$('.task[data-burn]');
+    if(!cards.length){ FX.acc=0; break; }
+    const c=cards[(Math.random()*cards.length)|0];
+    const r=c.getBoundingClientRect();
+    if(r.bottom<0 || r.top>innerHeight) continue;
+    FX.add(pEmber(r.left+Math.random()*r.width, r.bottom-3));
+  }
+}
+
+/* ---- モンスターの位置（画面の座標） ---- */
+function monTarget(){
+  const el=$("#mon"); if(!el) return null;
+  const r=el.getBoundingClientRect();
+  if(!r.width) return null;
+  return {x:r.left+r.width/2, y:r.top+r.height/2};
+}
+
+/* ---- チェック → 隕石が飛ぶ → 当たる ---- */
+function fxStrike(rect, col, last){
+  const tgt=monTarget();
+  if(!tgt){ if(last) fxDefeat(); return; }
+  if(reduced()){ fxImpact(tgt.x,tgt.y,col,last); return; }
+
+  const el=document.createElement("div");
+  el.className="meteor"; el.style.setProperty("--c",col);
+  document.body.appendChild(el);
+
+  const x0=rect.left+rect.width/2, y0=rect.top+rect.height/2;
+  const s0=Math.min(76, Math.max(34, rect.height*.86)), s1=26;
+  const lift=Math.max(110, Math.abs(y0-tgt.y)*.45);
+  const cxp=(x0+tgt.x)/2 + (x0<tgt.x?-30:30);
+  const cyp=Math.min(y0,tgt.y)-lift;
+  const dur=560+Math.min(300, Math.hypot(tgt.x-x0,tgt.y-y0)*.22);
+  const t0=performance.now();
+  FX.flying++; FX.start();
+
+  (function step(now){
+    let p=(now-t0)/dur; if(p>1) p=1;
+    const e=Math.pow(p,1.42);                     // 終わりにかけて加速する
+    const u=1-e;
+    const mx=u*u*x0 + 2*u*e*cxp + e*e*tgt.x;
+    const my=u*u*y0 + 2*u*e*cyp + e*e*tgt.y;
+    const sz=s0+(s1-s0)*e;
+    el.style.setProperty("--s",sz.toFixed(1)+"px");
+    el.style.transform="translate3d("+mx.toFixed(1)+"px,"+my.toFixed(1)+"px,0) rotate("+(e*520).toFixed(0)+"deg)";
+    FX.add(pFire(mx,my,sz)); FX.add(pFire(mx,my,sz));
+    if(p<1){ requestAnimationFrame(step); }
+    else{
+      el.remove(); FX.flying--;
+      fxImpact(tgt.x,tgt.y,col,last);
+    }
+  })(t0);
+}
+
+function fxImpact(x,y,col,last){
+  const mon=$("#mon"), ar=$("#arena");
+  if(mon){ mon.dataset.hit="1"; setTimeout(()=>{ delete mon.dataset.hit; },400); }
+  if(ar && !reduced()){
+    ar.classList.remove("shake"); void ar.offsetWidth; ar.classList.add("shake");
+    setTimeout(()=>ar.classList.remove("shake"),380);
+  }
+  if(!reduced()){
+    for(let i=0;i<28;i++) FX.add(pSpark(x,y,col));
+    for(let i=0;i<16;i++) FX.add(pFire(x,y,46));
+    FX.start();
+  }
+  if(last) setTimeout(fxDefeat, 260);
+}
+
+function fxDefeat(){
+  const t=monTarget(), m=monsterOf();
+  renderArena();
+  if(!t || reduced()) return;
+  for(let i=0;i<70;i++) FX.add(pShard(t.x,t.y,m));
+  for(let i=0;i<34;i++) FX.add(pSpark(t.x,t.y,"#FFE8B0"));
+  for(let i=0;i<20;i++) FX.add(pFire(t.x,t.y,80));
+  FX.start();
+}
+
+/* ---- 日が変わる：やらなかったぶんが燃えて消える ----
+   見た目だけで、記録には触れない。後からその日を開いて付け直せる。 */
+function fxBurnAway(done){
+  const cards=$$('#tasks .task').filter(c=>c.dataset.done!=="1");
+  if(!cards.length || reduced()){ done(); return; }
+  cards.forEach((c,i)=>{
+    setTimeout(()=>{
+      const r=c.getBoundingClientRect();
+      if(r.bottom>0 && r.top<innerHeight){
+        for(let k=0;k<20;k++) FX.add(pEmber(r.left+Math.random()*r.width, r.bottom-4, true));
+        FX.start();
+      }
+      const hgt=c.offsetHeight;
+      c.classList.add("burning");
+      setTimeout(()=>{ c.style.height=hgt+"px"; void c.offsetWidth; c.classList.add("gone"); }, 820);
+    }, i*130);
+  });
+  setTimeout(done, cards.length*130 + 1500);
+}
+
+/* ---- アリーナを描く ---- */
+function renderArena(){
+  const ar=$("#arena"); if(!ar) return;
+  const tasks=visibleTasks(), done=doneOf(sel);
+  const total=tasks.length;
+  const dn=tasks.filter(t=>done.includes(t.id)).length;
+  const alive=total-dn;
+  const m=monsterOf();
+
+  if(ar.dataset.mon!==m.id){
+    ar.dataset.mon=m.id;
+    $("#monInner").innerHTML=monsterSVG(m,"a")+'<span class="flash"></span>';
+    $("#monName").textContent=m.name;
+    $("#monTag").textContent=m.tag;
+  }
+
+  const hp=$("#hp");
+  if(hp.childElementCount!==total){
+    hp.innerHTML="";
+    for(let i=0;i<total;i++) hp.appendChild(document.createElement("i"));
+  }
+  [...hp.children].forEach((el,i)=>{ el.className = i<alive ? "live" : "gone"; });
+  $("#hpN").textContent = total ? ("のこり "+alive+" / "+total) : "タスクなし";
+  $("#winSub").textContent = m.name+" を倒した";
+  ar.dataset.state = (total>0 && alive===0) ? "win" : "live";
+}
+
+/* ---- アリーナを上に貼り付ける（スクロールしても狙いが見える） ---- */
+function updatePin(){
+  const a=$("#arena"), s=$("#arenaTop");
+  if(!a||!s) return;
+  a.classList.toggle("pin", a.getBoundingClientRect().top - s.getBoundingClientRect().top > 2);
+}
+
+/* ---- モンスターを選ぶ ---- */
+function renderMonPick(){
+  const el=$("#monGrid"); el.innerHTML="";
+  const cur=monsterOf().id;
+  MONSTERS.forEach(m=>{
+    const b=document.createElement("button");
+    b.className="monCell";
+    if(m.id===cur) b.dataset.on="1";
+    b.innerHTML=monsterSVG(m,"p")+'<span>'+m.name+'</span>';
+    b.onclick=()=>{
+      lsPut(MON_KEY,m.id);
+      const ar=$("#arena"); if(ar) ar.dataset.mon="";
+      renderArena(); renderMonPick(); toast(m.name+" が出てきた");
+    };
+    el.appendChild(b);
+  });
 }
 
 /* ---- 編集 ---- */
@@ -1392,6 +2185,42 @@ if(!ON_ARTIFACT){
 /* ---- 日付が変わったら今日に戻す ---- */
 document.addEventListener("visibilitychange",()=>{
   if(document.visibilityState==="visible" && anchor<today()){ anchor=today(); sel=today(); render(); }
+});
+
+/* ---- 3D 演出の起動 ---- */
+let showDone = ls(SHOW_KEY)==="1";
+FX.init();
+addEventListener("scroll", updatePin, {passive:true});
+addEventListener("resize", updatePin, {passive:true});
+$("#btnMon").onclick=()=>{ renderMonPick(); $("#sheetMon").classList.add("on"); };
+
+/* 燃え具合は時間で変わる。変わったときだけ描き直す */
+setInterval(()=>{
+  const el=$("#tasks"); if(!el) return;
+  if(el.dataset.burnTier !== String(burnTier())) renderTasks();
+  if(emberNeed()) FX.start();
+}, 30000);
+
+/* 日が変わる瞬間。やらなかったぶんを燃やしてから次の日に送る。
+   燃やすのは見た目だけで、記録は残る（その日を開けば後から付けられる） */
+let curDay=today();
+setInterval(()=>{
+  const t=today();
+  if(t===curDay) return;
+  const wasToday=(sel===curDay);
+  curDay=t;
+  if(wasToday && document.visibilityState==="visible"){
+    fxBurnAway(()=>{ anchor=t; sel=t; render(); toast("燃え尽きた。今日のぶんが出ています"); });
+  }else{
+    anchor=t; sel=t; render();
+  }
+}, 15000);
+
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState!=="visible") return;
+  curDay=today();                 // 画面を閉じている間に日が変わったぶんは、黙って送る
+  FX.size();
+  if(emberNeed()) FX.start();
 });
 
 fillCatSelect();
