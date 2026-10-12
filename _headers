@@ -1,0 +1,12 @@
+# 記録のやりとりは絶対にキャッシュしない。古い記録を掴むと取りこぼす
+/api/*
+  Cache-Control: no-store
+  X-Content-Type-Options: nosniff
+
+# 画面はいつも最新を取りに行く（更新がすぐ届くように）
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/sw.js
+  Cache-Control: no-cache
