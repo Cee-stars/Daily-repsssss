@@ -1,7 +1,8 @@
 // DAILY REPS — オフライン用のキャッシュ
-const CACHE = "dailyreps-v9";
+const CACHE = "dailyreps-v10";
 const FILES = ["./", "./index.html", "./manifest.webmanifest",
-               "./icon-180.png", "./icon-192.png", "./icon.png"];
+               "./icon-180.png", "./icon-192.png", "./icon.png",
+               "./nushi.webp", "./nushi.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

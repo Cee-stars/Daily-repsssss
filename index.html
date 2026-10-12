@@ -306,7 +306,17 @@ body{
   transition:width .55s var(--spring), height .55s var(--spring), opacity .45s var(--ease);
 }
 .arena.pin .mon{width:72px;height:72px}
-.mon svg{width:100%;height:100%;display:block;filter:drop-shadow(0 20px 28px rgba(0,0,0,.5))}
+.mon svg,.mon img{width:100%;height:100%;display:block;filter:drop-shadow(0 20px 28px rgba(0,0,0,.5))}
+.mon img{object-fit:contain}
+/* 実写は暗いので、背後から光を当てて浮かせる。画そのものには触れない */
+/* 実写は枠に収めるぶん小さく見えるので、少し大きく取る */
+.mon[data-film="1"]{width:198px;height:198px}
+.arena.pin .mon[data-film="1"]{width:86px;height:86px}
+.mon[data-film="1"]::before{
+  content:"";position:absolute;inset:-12% -4% 2%;border-radius:50%;z-index:-1;
+  background:radial-gradient(closest-side, rgba(184,200,255,.32), rgba(120,140,220,.11) 58%, transparent 76%);
+}
+.monCell img{width:62px;height:62px;object-fit:contain;display:block}
 .mon .flash{
   position:absolute;inset:6%;border-radius:50%;background:#fff;opacity:0;
   mix-blend-mode:screen;pointer-events:none;
@@ -1667,8 +1677,9 @@ const reduced = () => {
    立体に見せている。 */
 const MONSTERS = [
   /* ボス。ほかの5体と違って、崩さずに描く。既定はこれ */
-  {id:"nushi", name:"ヌシ",     tag:"APEX",  kind:"boss",
-   lite:"#A2A8B2", hue:"#4E535C", dark:"#23262C", ink:"#0B0D11", belly:"#6E312A", bellyD:"#49201B",
+  {id:"nushi", name:"ヌシ",     tag:"APEX",  kind:"film", film:"nushi",
+   /* 砕けたときの破片の色。実物から採ったが、暗い空では沈むので少しだけ持ち上げた */
+   lite:"#7D7480", hue:"#4A424A", dark:"#241D22", ink:"#0B0909", belly:"#6E312A", bellyD:"#49201B",
    eye:"#E8AE3C"},
   {id:"gao",   name:"ガオ",     tag:"ROAR",  kind:"rex",
    lite:"#FFC391", hue:"#F2662B", dark:"#8A2A08", ink:"#3A1200", belly:"#FFE9C9", bellyD:"#F3C291"},
@@ -1689,100 +1700,12 @@ function monsterOf(){
   return MONSTERS.find(m=>m.id===id) || MONSTERS[0];
 }
 
-function fangs(x0,y0,x1,y1,n,h,side){
-  const dx=x1-x0, dy=y1-y0, L=Math.hypot(dx,dy)||1;
-  const nx=-dy/L*h*side, ny=dx/L*h*side;
-  let d="";
-  for(let i=0;i<n;i++){
-    const a=i/n, m=(i+.34)/n, b=(i+.68)/n;
-    const px=t=>x0+dx*t, py=t=>y0+dy*t;
-    d+="M"+px(a).toFixed(1)+" "+py(a).toFixed(1)+
-       "L"+(px(m)+nx).toFixed(1)+" "+(py(m)+ny).toFixed(1)+
-       "L"+px(b).toFixed(1)+" "+py(b).toFixed(1)+"Z";
-  }
-  return d;
-}
-
-function bossSVG(m, uid){
-  const G="G"+uid, D="D"+uid, H="H"+uid, M="M"+uid, S="S"+uid;
-  return '<svg viewBox="0 0 200 200" aria-hidden="true">'+
-  '<defs>'+
-    '<linearGradient id="'+G+'" x1=".25" y1="0" x2=".75" y2="1">'+
-      '<stop offset="0" stop-color="'+m.lite+'"/><stop offset=".45" stop-color="'+m.hue+'"/>'+
-      '<stop offset="1" stop-color="'+m.dark+'"/></linearGradient>'+
-    '<linearGradient id="'+D+'" x1="0" y1="0" x2=".4" y2="1">'+
-      '<stop offset="0" stop-color="'+m.hue+'"/><stop offset="1" stop-color="'+m.ink+'"/></linearGradient>'+
-    '<linearGradient id="'+H+'" x1=".12" y1="0" x2=".88" y2=".95">'+
-      '<stop offset="0" stop-color="'+m.lite+'"/><stop offset=".38" stop-color="'+m.hue+'"/>'+
-      '<stop offset="1" stop-color="'+m.dark+'"/></linearGradient>'+
-    '<linearGradient id="'+M+'" x1=".1" y1="0" x2=".6" y2="1">'+
-      '<stop offset="0" stop-color="#3B1210"/><stop offset=".5" stop-color="'+m.belly+'"/>'+
-      '<stop offset="1" stop-color="#2E0D0C"/></linearGradient>'+
-    '<radialGradient id="'+S+'">'+
-      '<stop offset="0" stop-color="#000" stop-opacity=".6"/>'+
-      '<stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>'+
-  '</defs>'+
-
-  '<ellipse cx="96" cy="186" rx="62" ry="10" fill="url(#'+S+')"/>'+
-
-  /* しっぽ：後ろへ高く跳ね上げる */
-  '<path d="M58 118 C44 108 28 90 12 64 C8 57 14 50 20 55 C40 76 56 92 72 104 Z" fill="url(#'+D+')"/>'+
-
-  /* 奥の脚 */
-  '<path d="M58 128 C47 142 44 162 50 180 L34 180 C27 160 31 136 43 120 Z" fill="url(#'+D+')"/>'+
-
-  /* 胴：奥に小さく引く */
-  '<path d="M38 118 C40 94 58 80 80 80 C104 80 118 96 116 120 C114 144 96 158 74 158 C52 158 36 142 38 118 Z" fill="url(#'+G+')"/>'+
-  /* 背の淡い筋 */
-  '<path d="M48 100 C60 86 80 82 98 88 L95 97 C79 92 63 96 52 108 Z" fill="'+m.lite+'" opacity=".4"/>'+
-  '<path d="M54 114 C64 101 82 97 98 102 L96 109 C81 105 66 109 57 120 Z" fill="'+m.lite+'" opacity=".26"/>'+
-
-  /* 手前の脚＋かぎ爪 */
-  '<path d="M74 142 C66 158 66 172 74 182 L54 182 C47 168 50 148 60 134 Z" fill="url(#'+H+')"/>'+
-  '<path d="M56 182 L51 189 M64 182 L62 190 M72 182 L73 189" stroke="'+m.ink+'" stroke-width="3.2" stroke-linecap="round"/>'+
-
-  /* 小さい前肢 */
-  '<path d="M96 122 C104 128 108 137 105 143 C100 140 94 133 91 126 Z" fill="url(#'+D+')"/>'+
-
-  /* 頭が胴に落とす影 */
-  '<ellipse cx="96" cy="106" rx="26" ry="20" fill="#000" fill-opacity=".22"/>'+
-
-  /* ---- 頭：大きく、あごを開いて咆哮 ---- */
-  '<g transform="translate(84,104) rotate(9)">'+
-    /* 口の中：上あごの歯の線 → 先端 → 下あごの歯の線 で囲む */
-    '<path d="M0 0 L84 -3 L53 54 L-2 8 Z" fill="url(#'+M+')"/>'+
-    /* 喉の奥 */
-    '<path d="M0 0 L22 -1 L20 20 L-1 7 Z" fill="#200706" opacity=".8"/>'+
-    /* 舌 */
-    '<path d="M12 12 C30 20 46 30 58 42 C46 46 26 36 11 22 Z" fill="#9A4F45" opacity=".8"/>'+
-
-    /* 下あご */
-    '<g transform="rotate(24)">'+
-      '<path d="M0 -1 C20 7 50 19 74 29 C83 33 83 44 73 45 C44 43 14 32 -3 17 Z" fill="url(#'+D+')"/>'+
-      '<path fill="#EFE6D2" d="'+fangs(3,4,70,28,7,-6.5,1)+'"/>'+
-      '<path d="M2 22 C24 31 50 39 72 42" stroke="'+m.ink+'" stroke-opacity=".38" stroke-width="2.2" fill="none"/>'+
-    '</g>'+
-
-    /* 上あご（頭蓋） */
-    '<path d="M-12 -12 C-4 -44 24 -60 54 -55 C80 -51 96 -34 94 -12 C92 2 74 9 48 9 C22 9 0 1 -12 -12 Z" fill="url(#'+H+')"/>'+
-    '<path fill="#EFE6D2" d="'+fangs(3,1,85,-3,8,7.5,1)+'"/>'+
-
-    /* 眉の張り出し・目 */
-    '<path d="M16 -38 C28 -48 48 -49 60 -40" stroke="'+m.ink+'" stroke-width="5" fill="none" stroke-linecap="round"/>'+
-    '<ellipse cx="34" cy="-27" rx="7.2" ry="5.8" fill="#100C07"/>'+
-    '<ellipse cx="35" cy="-27.6" rx="3.6" ry="2.9" fill="'+m.eye+'"/>'+
-    '<circle cx="33" cy="-29" r="1.3" fill="#fff" opacity=".9"/>'+
-    /* 鼻孔 */
-    '<ellipse cx="84" cy="-24" rx="3" ry="2.3" fill="'+m.ink+'"/>'+
-    /* 皮膚の皺 */
-    '<path d="M20 -6 C40 -2 66 -1 88 -6" stroke="'+m.ink+'" stroke-opacity=".4" stroke-width="2.2" fill="none"/>'+
-    '<path d="M6 -22 C14 -18 22 -16 30 -15" stroke="'+m.ink+'" stroke-opacity=".25" stroke-width="2" fill="none"/>'+
-  '</g>'+
-  '</svg>';
-}
-
 function monsterSVG(m,uid){
-  if(m.kind==="boss") return bossSVG(m, uid+m.id);
+  /* 送ってもらった映像そのもの。緑を抜いた透過アニメーションを貼る。
+     対応していない端末には、同じ構図の静止画が出る */
+  if(m.kind==="film")
+    return '<picture><source srcset="'+m.film+'.webp" type="image/webp">'+
+           '<img src="'+m.film+'.png" alt="" decoding="async"></picture>';
   const G="g"+uid+m.id, D="d"+uid+m.id, B="b"+uid+m.id, S="s"+uid+m.id;
   const hd=HEAD[m.kind], k=(hd.r/40).toFixed(4);
 
@@ -2201,6 +2124,8 @@ function renderArena(){
   if(ar.dataset.mon!==m.id){
     ar.dataset.mon=m.id;
     $("#monInner").innerHTML=monsterSVG(m,"a")+'<span class="flash"></span>';
+    const mon=$("#mon");
+    if(m.kind==="film") mon.dataset.film="1"; else delete mon.dataset.film;
     $("#monName").textContent=m.name;
     $("#monTag").textContent=m.tag;
   }
