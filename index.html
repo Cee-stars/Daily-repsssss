@@ -746,7 +746,7 @@ body{
                autocapitalize="off" spellcheck="false" placeholder="Cloudflare に入れたものと同じ文字列">
         <button type="button" class="eye" id="cfKeyEye" aria-label="鍵を表示">&#128065;</button>
       </div>
-      <div class="hint">Cloudflare の Pages → Settings → Variables and Secrets に入れた <b>REPS_KEY</b> と同じものです。</div>
+      <div class="hint">Cloudflare の Worker → 設定 → 変数とシークレットに、<b>シークレット</b>として入れた <b>REPS_KEY</b> と同じものです。</div>
     </div>
 
     <div class="field">
@@ -754,8 +754,8 @@ body{
       <input id="cfUrl" type="text" inputmode="url" autocomplete="off"
              autocapitalize="off" spellcheck="false" placeholder="/api/state">
       <div class="hint">
-        Cloudflare Pages から開いているなら空で構いません。
-        ほかの場所から開くときだけ <code>https://&lt;名前&gt;.pages.dev/api/state</code> のように入れます。
+        置き場と同じ場所からアプリを開いているなら、空で構いません。
+        ほかの場所から開くときだけ <code>https://&lt;名前&gt;.workers.dev/api/state</code> のように入れます。
       </div>
     </div>
 
@@ -2399,7 +2399,7 @@ $("#btnCfCheck").onclick=async ()=>{
     out.push("置き場に届きました（HTTP "+r.status+"）");
     let j=null; try{ j=await r.json(); }catch(e){}
     if(r.status===401)      out.push("鍵が違います。Cloudflare の REPS_KEY と同じ文字列を入れてください。");
-    else if(r.status===404) out.push("その場所に /api/state がありません。Pages に functions フォルダが入っているか確かめてください。");
+    else if(r.status===404) out.push("その場所に /api/state がありません。Worker の設定で /api/* が Worker に渡っているか確かめてください。");
     else if(r.status===500) out.push((j&&j.error) || "置き場の設定が足りません。");
     else if(r.ok){
       bad=false;
