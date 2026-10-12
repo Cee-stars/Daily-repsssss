@@ -446,6 +446,23 @@ body{
   box-shadow:0 0 18px 5px rgba(255,140,40,.5);
 }
 
+/* ---- 当たったときの爆発 ----
+   送ってもらった映像の48コマを1本の帯にして、steps() で送る。
+   毎回かならず1コマ目から始まるので、押すたび同じように爆ぜる。 */
+.boom{
+  position:fixed;z-index:32;pointer-events:none;
+  width:300px;height:127px;margin-left:-150px;margin-top:-82px;
+  background:url(boom.webp) 0 0/14400px 127px no-repeat;
+  animation:boomPlay 2s steps(48) forwards;
+}
+.boom[data-big="1"]{
+  width:420px;height:178px;margin-left:-210px;margin-top:-116px;
+  background-size:20160px 178px;animation-name:boomPlayBig;
+}
+/* % は「枠と画像の差」に対する割合で、画像幅ではない。px で送る */
+@keyframes boomPlay{    from{background-position-x:0px} to{background-position-x:-14400px} }
+@keyframes boomPlayBig{ from{background-position-x:0px} to{background-position-x:-20160px} }
+
 /* ---- タスクカード：立体と燃焼 ---- */
 .task{
   position:relative;overflow:hidden;
@@ -2062,6 +2079,18 @@ function fxStrike(rect, col, last){
   })(t0);
 }
 
+/* 実写の爆発を1本だけ置く。終わったら消す */
+function fxBoom(x,y,big){
+  if(reduced()) return;
+  const el=document.createElement("div");
+  el.className="boom";
+  if(big) el.dataset.big="1";
+  el.style.left=x.toFixed(0)+"px";
+  el.style.top =y.toFixed(0)+"px";
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 2100);
+}
+
 function fxImpact(x,y,col,last){
   if(hpPending>0) hpPending--;
   renderArena();                       // HP が落ちるのは、ここ
@@ -2072,10 +2101,10 @@ function fxImpact(x,y,col,last){
     setTimeout(()=>ar.classList.remove("shake"),380);
   }
   if(!reduced()){
+    fxBoom(x,y,false);
     FX.add(pRing(x,y,"#FFD9A0"));
     FX.add(pRing(x,y,col));
-    for(let i=0;i<28;i++) FX.add(pSpark(x,y,col));
-    for(let i=0;i<16;i++) FX.add(pFire(x,y,46));
+    for(let i=0;i<14;i++) FX.add(pSpark(x,y,col));   // 爆発が主役なので控えめに
     FX.start();
   }
   if(last) setTimeout(fxDefeat, 260);
@@ -2085,6 +2114,7 @@ function fxDefeat(){
   const t=monTarget(), m=monsterOf();
   renderArena();
   if(!t || reduced()) return;
+  fxBoom(t.x, t.y, true);
   for(let i=0;i<70;i++) FX.add(pShard(t.x,t.y,m));
   for(let i=0;i<34;i++) FX.add(pSpark(t.x,t.y,"#FFE8B0"));
   for(let i=0;i<20;i++) FX.add(pFire(t.x,t.y,80));
