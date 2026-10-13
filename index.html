@@ -664,8 +664,8 @@ body{
 
 <section class="hero">
   <div class="seg" id="daySeg">
-    <button type="button" data-mode="lesson">レッスン日</button>
-    <button type="button" data-mode="off">レッスンなし日</button>
+    <button type="button" data-mode="lesson">毎日</button>
+    <button type="button" data-mode="off">ときどきも</button>
   </div>
   <div class="date" id="dateLine"></div>
   <div class="msg" id="msg"></div>
@@ -820,41 +820,61 @@ const CATS = [
   {id:"listening",  name:"LISTENING",  jp:"リスニング",  c:"#00A9E0", soft:"#E6F6FD"},
   {id:"speaking",   name:"SPEAKING",   jp:"スピーキング", c:"#FF7A18", soft:"#FFF3E8"},
   {id:"writing",    name:"WRITING",    jp:"ライティング", c:"#00A56E", soft:"#E6F7F1"},
+  {id:"vocab",      name:"VOCABULARY", jp:"語彙力",      c:"#7A5AF8", soft:"#EFEAFE"},
   {id:"reading",    name:"READING",    jp:"リーディング", c:"#F0357E", soft:"#FFEBF3"}
 ];
 const C = Object.fromEntries(CATS.map(c=>[c.id,c]));
 
 /* ---- 日タイプ ----
-   lesson … レッスンがある日   off … レッスンがない日   both … どちらの日にも出す */
+   いまの使い方は「毎日やるもの」と「ときどきやるもの」の出し分け。
+   id は記録の鍵なので、意味が変わっても据え置く（保存済みの記録がそのまま読める）。
+     both … 毎日出す        lesson … 「毎日」の画面にだけ出す（いまは未使用）
+     off  … 「ときどきも」の画面にだけ足して出す（週1・月1・6か月目から） */
 const DAY_TYPES = [
-  {id:"both",   jp:"両方"},
-  {id:"lesson", jp:"レッスン日"},
-  {id:"off",    jp:"レッスンなし日"}
+  {id:"both",   jp:"毎日"},
+  {id:"lesson", jp:"毎日だけ"},
+  {id:"off",    jp:"ときどき"}
 ];
 const DAYTYPE_IDS = DAY_TYPES.map(d=>d.id);
 
 /* 配るタスク一覧。id はチェックの記録と結び付く鍵なので、
    一度配ったら変えない（名前だけ直したいときは id を据え置く）。 */
 const DEFAULT_TASKS = [
-  /* ---- どちらの日にも出す。毎日の固定点はこれ1つ ---- */
-  {id:"queue",     cat:"speaking",  name:"Anki（声に出して答える）",                      core:true,  dayType:"both",
-   note:"10分・レッスン日は3分でよい／新規5枚・復習60枚まで"},
+  /* 1日65分。インプット重視なので、スピーキングとライティングに独立した
+     時間枠はない。精聴15分の中でやる練習を、それぞれのカテゴリーにも出す。
+     ★は65分の4枠（精聴・多聴・語彙・多読）だけに付ける。 */
 
-  /* ---- レッスンなし日 ---- */
-  {id:"dict",      cat:"listening", name:"リピーティング（未知の動画）",                   core:true,  dayType:"off",
-   note:"10分・最後の1分は強勢とリズムだけ真似る"},
-  {id:"sunkan",    cat:"speaking",  name:"瞬間英作文",                                   core:true,  dayType:"off",
-   note:"15分・3通りに言い換えた文のうち2通りはここへ"},
-  {id:"r432",      cat:"speaking",  name:"即興1本（4/3/2 または 未知の質問に即答）",        core:false, dayType:"off",
-   note:"5分・話題は毎回変える／フリートークの前日は質問を3つ用意"},
-  {id:"book",      cat:"reading",   name:"洋書（BOOKSHELF）",                             core:false, dayType:"off",
-   note:"10分・未知語は1日5件までメモ。Anki に入れるかは週1でまとめて決める"},
+  /* ---- リスニング 30分 ---- */
+  {id:"intens",  cat:"listening", name:"精聴（1日1本）",              core:true,  dayType:"both",
+   note:"15分・VOA Learning English（初級）から／何も見ずに約95%聞き取れたら BBC 6 Minute English（中級）へ、予備は Listening Time Podcast／①何も見ずに聞く ②聞き取れなかった2〜3文だけ書き取る ③スクリプトで答え合わせし原因を確認（音のつながり、a・the・of などの短い語）④オーバーラッピングとシャドーイング ⑤もう一度、何も見ずに聞く／単語を調べるのは5分以内"},
+  {id:"extens",  cat:"listening", name:"多聴",                        core:true,  dayType:"both",
+   note:"15分・1回で大まかな内容を日本語で言える素材だけ／5分の間に2回ついていけなくなったら難しすぎる／止めない、巻き戻さない／聞き流しは数えない。集中して聞いた分だけ記録／読み終えた本の聞き直しは半分まで"},
 
-  /* ---- レッスン日。合計20分に収める ---- */
-  {id:"queueRead", cat:"speaking",  name:"前回のフレーズ3つ音読（レッスン前）",             core:false, dayType:"lesson",
-   note:"2分・今日のレッスンで使う"},
-  {id:"rephrase",  cat:"speaking",  name:"直後リカバリー",                                core:true,  dayType:"lesson",
-   note:"15分・席を立つ前に。詰まり2つ→各3通りで英語化→振り返り3文。聞けなかった箇所は A音／B語／C構文 の印だけ"}
+  /* ---- スピーキング（精聴15分の中で） ---- */
+  {id:"overlap", cat:"speaking",  name:"オーバーラッピング",           core:false, dayType:"both",
+   note:"精聴15分の中で・スクリプトを見ながら音声に声を重ねる／必ず内容を理解してから"},
+  {id:"shadow",  cat:"speaking",  name:"シャドーイング 2〜3回",        core:false, dayType:"both",
+   note:"精聴15分の中で・文字を見ず、少し遅れて追う／理解した後にやるほうが聞き取りが伸びる／小声のマンブリングから、なめらかに言えるまで"},
+  {id:"rec1min", cat:"speaking",  name:"週1：1分要約を録音",           core:false, dayType:"off",
+   note:"その週に聞いた素材を1分間英語で要約して録音／聞いた時間と読んだ語数の週合計も出す"},
+  {id:"tutor",   cat:"speaking",  name:"オンライン講師 週1〜2",        core:false, dayType:"off",
+   note:"6か月目から・インプットだけでは話せるようにならない。ここは削らない"},
+
+  /* ---- ライティング（精聴15分の中で） ---- */
+  {id:"dicta",   cat:"writing",   name:"パーシャル・ディクテーション", core:false, dayType:"both",
+   note:"精聴15分の中で・聞き取れなかった2〜3文だけ／点数をつけるためではなく、どこが聞き取れないかを見つける／全文は書かない"},
+  {id:"journal", cat:"writing",   name:"学習記録",                     core:false, dayType:"both",
+   note:"その日の多聴の分数と、多読で読んだ語数／毎日欠かさず書く"},
+
+  /* ---- 語彙力 10分 ---- */
+  {id:"ngsl",    cat:"vocab",     name:"NGSL頻出語のSRS",              core:true,  dayType:"both",
+   note:"10分・NGSL（約2,800語で一般的な英文の92%以上をカバー）を Anki で／カードに音声と例文／新規は1日10枚まで／復習が80枚を超えたら新規を止める／2,000語ほど覚えたら、精聴のスクリプトから3〜5文をカード化（センテンスマイニング）へ"},
+
+  /* ---- リーディング 25分 ---- */
+  {id:"extread", cat:"reading",   name:"音声付き多読",                 core:true,  dayType:"both",
+   note:"25分・Graded Readers。Oxford Bookworms Stage 1〜2から、Penguin Readers なども／1ページ（約250語）に知らない語1〜5個が目安、6個以上ならレベルを下げる／辞書を引かない・飛ばす・つまらない本はやめて次へ／音声を聞きながら読む。遅く感じたら黙読でよい／1分150語で楽に読めたら1段階上げる"},
+  {id:"levelup", cat:"reading",   name:"月1：レベル上げの確認",        core:false, dayType:"off",
+   note:"1つ上のレベルの本で「1ページの未知語」を数えて、上げられるか確かめる"}
 ];
 
 /* 配る一覧の版。記録が持っている版がこれより古ければ、タスクだけを
@@ -864,7 +884,7 @@ const DEFAULT_TASKS = [
    上の一覧を直したときは、この数字を1つ増やすこと。
    （時刻で比べていたが、端末で★を付け直すなどすると、その時刻が
      判定の時刻を追い越して入れ替えが届かなくなるのでやめた） */
-const TASKS_REV = 2;
+const TASKS_REV = 3;
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
@@ -889,7 +909,7 @@ const $$ = s=>[...document.querySelectorAll(s)];
 let state = load();
 let anchor = today();      // 週表示の基準日
 let sel = today();         // いま見ている日
-let dayMode = ls(DAYTYPE_KEY)==="lesson" ? "lesson" : "off";   // 日タイプの切り替え（既定はレッスンなし日）
+let dayMode = ls(DAYTYPE_KEY)==="off" ? "off" : "lesson";   // 日タイプの切り替え（既定はレッスンなし日）
 
 function today(){ return ymd(new Date()); }
 function ymd(d){
@@ -949,11 +969,6 @@ function normalize(s){
        突き合わせる相手も同じように差し替わるので、これで揃う。 */
   }
 
-  /* 名前だけを直したいとき。版を上げると一覧ごと入れ替わって、端末で
-     付け直した★や名前まで消えるので、この1件だけを合わせる。
-     すでに自分で別の名前にしてあれば、一致しないので触らない。 */
-  const sunkan = out.tasks.find(t => t.id === "sunkan");
-  if(sunkan && sunkan.name === "瞬間英作文（パラフレーズ由来を先に）") sunkan.name = "瞬間英作文";
 
   return out;
 }
@@ -1501,7 +1516,9 @@ function dayTypeOf(d){
   });
   if(nL>nO) return "lesson";
   if(nO>nL) return "off";
-  return d===today() ? dayMode : null;
+  /* どちらとも読めない日は「毎日」として数える。いまは毎日のぶんが普通で、
+     ときどきのぶんを分母に入れると、過ぎた日の輪がいつも欠けて見える */
+  return d===today() ? dayMode : "lesson";
 }
 
 /* その日に数えるタスクの集合（読み取れない日は全タスク） */
