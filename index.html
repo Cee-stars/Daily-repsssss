@@ -38,7 +38,7 @@
 body{
   margin:0;background:var(--bg);color:var(--ink);font-family:var(--ui);
   -webkit-text-size-adjust:100%;
-  padding:calc(var(--safe-t) + 16px) 16px calc(var(--safe-b) + 44px);
+  padding:calc(var(--safe-t) + 16px) 12px calc(var(--safe-b) + 44px);
   max-width:640px;margin-inline:auto;
 }
 button,input,select{font:inherit;color:inherit}
@@ -127,7 +127,16 @@ button{background:none;border:0;cursor:pointer}
 .task[data-done="1"] .nm{color:var(--dim);text-decoration:line-through}
 .task .tx{flex:1;min-width:0}
 .task .nm{display:block;font-size:16px;font-weight:700;line-height:1.4}
-.task .nt{display:block;margin-top:4px;font-size:12px;font-weight:600;color:var(--dim);line-height:1.45}
+.task .nt{display:block;margin-top:5px;font-size:12px;font-weight:600;color:var(--dim);line-height:1.72}
+/* 蛍光ペン風。塗りつぶすと12pxでは字が沈むので、下半分だけ色を乗せる */
+.task .nt .mk{
+  background:linear-gradient(transparent 55%, var(--mk,#E6E9F2) 55%) no-repeat;
+  padding:0 2px;border-radius:2px;font-weight:800;color:var(--ink);
+  -webkit-box-decoration-break:clone;box-decoration-break:clone;
+  white-space:nowrap;                      /* 帯が行をまたいで切れないように */
+}
+.task .nt .ar{color:#A6ACB8;font-weight:800;margin:0 .22em}
+.task[data-done="1"] .nt .mk,.task[data-ash="1"] .nt .mk{filter:grayscale(.65)}
 .task[data-done="1"] .nt{opacity:.55}
 .task .star{flex:0 0 auto;font-size:14px;color:var(--accent)}
 
@@ -817,11 +826,12 @@ body{
 "use strict";
 
 const CATS = [
-  {id:"listening",  name:"LISTENING",  jp:"リスニング",  c:"#00A9E0", soft:"#E6F6FD"},
-  {id:"speaking",   name:"SPEAKING",   jp:"スピーキング", c:"#FF7A18", soft:"#FFF3E8"},
-  {id:"writing",    name:"WRITING",    jp:"ライティング", c:"#00A56E", soft:"#E6F7F1"},
-  {id:"vocab",      name:"VOCABULARY", jp:"語彙力",      c:"#7A5AF8", soft:"#EFEAFE"},
-  {id:"reading",    name:"READING",    jp:"リーディング", c:"#F0357E", soft:"#FFEBF3"}
+  /* mark は控えに引くマーカーの色。soft より濃い。薄いままだと白地で見えない */
+  {id:"listening",  name:"LISTENING",  jp:"リスニング",  c:"#00A9E0", soft:"#E6F6FD", mark:"#BEE6F7"},
+  {id:"speaking",   name:"SPEAKING",   jp:"スピーキング", c:"#FF7A18", soft:"#FFF3E8", mark:"#FFD9BA"},
+  {id:"writing",    name:"WRITING",    jp:"ライティング", c:"#00A56E", soft:"#E6F7F1", mark:"#BFEADA"},
+  {id:"vocab",      name:"VOCABULARY", jp:"語彙力",      c:"#7A5AF8", soft:"#EFEAFE", mark:"#D9CFFD"},
+  {id:"reading",    name:"READING",    jp:"リーディング", c:"#F0357E", soft:"#FFEBF3", mark:"#FBC8DB"}
 ];
 const C = Object.fromEntries(CATS.map(c=>[c.id,c]));
 
@@ -846,15 +856,15 @@ const DEFAULT_TASKS = [
 
   /* ---- リスニング 30分 ---- */
   {id:"intens",  cat:"listening", name:"精聴（1日1本）",              core:true,  dayType:"both",
-   note:"15分・VOA Learning English（初級）から／何も見ずに約95%聞き取れたら BBC 6 Minute English（中級）へ、予備は Listening Time Podcast／①何も見ずに聞く ②聞き取れなかった2〜3文だけ書き取る ③スクリプトで答え合わせし原因を確認（音のつながり、a・the・of などの短い語）④オーバーラッピングとシャドーイング ⑤もう一度、何も見ずに聞く／単語を調べるのは5分以内"},
+   note:"15分・VOA Learning English（初級）から／何も見ずに約95%聞き取れたら BBC 6 Minute English（中級）へ、予備は Listening Time Podcast／①何も見ずに聞く ②{{パーシャル・ディクテーション}}（聞き取れなかった2〜3文だけ）③スクリプトで答え合わせし原因を確認（音のつながり、a・the・of などの短い語）④{{オーバーラッピング}}と{{シャドーイング}} ⑤もう一度、何も見ずに聞く／単語を調べるのは5分以内／この中でやる3つ：{{パーシャル・ディクテーション}}→{{オーバーラッピング}}→{{シャドーイング}}"},
   {id:"extens",  cat:"listening", name:"多聴",                        core:true,  dayType:"both",
    note:"15分・1回で大まかな内容を日本語で言える素材だけ／5分の間に2回ついていけなくなったら難しすぎる／止めない、巻き戻さない／聞き流しは数えない。集中して聞いた分だけ記録／読み終えた本の聞き直しは半分まで"},
 
   /* ---- スピーキング（精聴15分の中で） ---- */
   {id:"overlap", cat:"speaking",  name:"オーバーラッピング",           core:false, dayType:"both",
-   note:"精聴15分の中で・スクリプトを見ながら音声に声を重ねる／必ず内容を理解してから"},
+   note:"{{精聴}}15分の中で・スクリプトを見ながら音声に声を重ねる／必ず内容を理解してから"},
   {id:"shadow",  cat:"speaking",  name:"シャドーイング 2〜3回",        core:false, dayType:"both",
-   note:"精聴15分の中で・文字を見ず、少し遅れて追う／理解した後にやるほうが聞き取りが伸びる／小声のマンブリングから、なめらかに言えるまで"},
+   note:"{{精聴}}15分の中で・文字を見ず、少し遅れて追う／理解した後にやるほうが聞き取りが伸びる／小声のマンブリングから、なめらかに言えるまで"},
   {id:"rec1min", cat:"speaking",  name:"週1：1分要約を録音",           core:false, dayType:"off",
    note:"その週に聞いた素材を1分間英語で要約して録音／聞いた時間と読んだ語数の週合計も出す"},
   {id:"tutor",   cat:"speaking",  name:"オンライン講師 週1〜2",        core:false, dayType:"off",
@@ -862,9 +872,9 @@ const DEFAULT_TASKS = [
 
   /* ---- ライティング（精聴15分の中で） ---- */
   {id:"dicta",   cat:"writing",   name:"パーシャル・ディクテーション", core:false, dayType:"both",
-   note:"精聴15分の中で・聞き取れなかった2〜3文だけ／点数をつけるためではなく、どこが聞き取れないかを見つける／全文は書かない"},
+   note:"{{精聴}}15分の中で・聞き取れなかった2〜3文だけ／点数をつけるためではなく、どこが聞き取れないかを見つける／全文は書かない"},
   {id:"journal", cat:"writing",   name:"学習記録",                     core:false, dayType:"both",
-   note:"その日の多聴の分数と、多読で読んだ語数／毎日欠かさず書く"},
+   note:"その日の{{多聴}}の分数と、{{音声付き多読}}で読んだ語数／毎日欠かさず書く"},
 
   /* ---- 語彙力 10分 ---- */
   {id:"ngsl",    cat:"vocab",     name:"NGSL頻出語のSRS",              core:true,  dayType:"both",
@@ -884,7 +894,7 @@ const DEFAULT_TASKS = [
    上の一覧を直したときは、この数字を1つ増やすこと。
    （時刻で比べていたが、端末で★を付け直すなどすると、その時刻が
      判定の時刻を追い越して入れ替えが届かなくなるのでやめた） */
-const TASKS_REV = 3;
+const TASKS_REV = 4;
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
@@ -1679,7 +1689,7 @@ function renderTasks(){
       b.innerHTML='<span class="box">&#10003;</span><span class="tx"><span class="nm"></span>'+
         (t.note?'<span class="nt"></span>':'')+'</span>'+(t.core?'<span class="star">&#9733;</span>':'');
       b.querySelector(".nm").textContent=t.name;
-      if(t.note) b.querySelector(".nt").textContent=t.note;
+      if(t.note) paintNote(b.querySelector(".nt"), t.note);
       b.onclick=()=>toggle(t.id,b);
       el.appendChild(b);
       drew++;
@@ -2249,6 +2259,44 @@ function renderMonPick(){
     };
     el.appendChild(b);
   });
+}
+
+/* ---- 控えのマーカー ----
+   控えの中の {{語}} を、その語が属するカテゴリの色で塗る。
+   控えは利用者が自由に書き換えられ、同期で他の端末からも降ってくるので、
+   innerHTML には絶対に入れない。テキストと、自分で作った span だけで組む。
+   【】や == は日本語の文章に普通に出るので、誤爆しない {{ }} を記法にした。 */
+const MARK = {
+  "精聴":"listening", "多聴":"listening",
+  "オーバーラッピング":"speaking", "シャドーイング":"speaking",
+  "パーシャル・ディクテーション":"writing", "学習記録":"writing",
+  "NGSL":"vocab", "音声付き多読":"reading"
+};
+const MARK_RE = /\{\{([^{}\n]{1,40})\}\}|→/g;
+
+function paintNote(el, note){
+  el.textContent = "";
+  const s = typeof note==="string" ? note : "";
+  let i=0, m;
+  MARK_RE.lastIndex = 0;              // 使い回す正規表現。戻し忘れると2回目で取りこぼす
+  while((m = MARK_RE.exec(s))){
+    if(m.index > i) el.appendChild(document.createTextNode(s.slice(i, m.index)));
+    if(m[0] === "→"){                 // 矢印は少し弱めて、語のほうを立てる
+      const a=document.createElement("span"); a.className="ar"; a.textContent="→";
+      el.appendChild(a);
+    }else{
+      const w=m[1].trim(), cat=C[MARK[w]];
+      if(w && cat){
+        const sp=document.createElement("span"); sp.className="mk";
+        sp.style.setProperty("--mk", cat.mark);
+        sp.textContent=w; el.appendChild(sp);
+      }else{
+        el.appendChild(document.createTextNode(m[1]));   // 知らない語は、ただの文字として出す
+      }
+    }
+    i = MARK_RE.lastIndex;
+  }
+  if(i < s.length) el.appendChild(document.createTextNode(s.slice(i)));
 }
 
 /* ---- 編集 ---- */
