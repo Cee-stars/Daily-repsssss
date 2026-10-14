@@ -136,6 +136,13 @@ button{background:none;border:0;cursor:pointer}
   white-space:nowrap;                      /* 帯が行をまたいで切れないように */
 }
 .task .nt .ar{color:#A6ACB8;font-weight:800;margin:0 .22em}
+.task .nt .ln{display:block;padding-left:1.25em;text-indent:-1.25em}
+.task .nt .nh{
+  display:block;margin-top:9px;font-weight:900;color:var(--ink);opacity:.8;
+  font-size:11.5px;letter-spacing:.06em;
+}
+.task .nt .nh:first-child{margin-top:0}
+.task .nt .gap{display:block;height:5px}
 .task[data-done="1"] .nt .mk,.task[data-ash="1"] .nt .mk{filter:grayscale(.65)}
 .task[data-done="1"] .nt{opacity:.55}
 .task .star{flex:0 0 auto;font-size:14px;color:var(--accent)}
@@ -206,6 +213,7 @@ button{background:none;border:0;cursor:pointer}
 .erow .ent{
   flex:1 1 100%;border:0;border-top:1px solid var(--line);background:none;
   font-size:13px;font-weight:600;color:var(--dim);padding:9px 2px 1px;min-width:0;
+  font-family:var(--ui);line-height:1.7;resize:none;overflow:hidden;
 }
 .addrow{display:grid;gap:9px;margin-top:14px}
 .addrow input,.addrow select{
@@ -852,39 +860,41 @@ const DAYTYPE_IDS = DAY_TYPES.map(d=>d.id);
 const DEFAULT_TASKS = [
   /* 1日65分。インプット重視なので、スピーキングとライティングに独立した
      時間枠はない。精聴15分の中でやる練習を、それぞれのカテゴリーにも出す。
-     ★は65分の4枠（精聴・多聴・語彙・多読）だけに付ける。 */
+     ★は65分の4枠（精聴・多聴・語彙・多読）だけに付ける。
+     控えは改行で段を作る。「■ 」で始まる行は小見出し。
+     いつ見ても手順が分かる形にしてある。 */
+  {id:"intens", cat:"listening", name:"精聴（1日1本）", core:true, dayType:"both",
+   note:"15分・1日1本\n\n■ 手順\n① 何も見ずに聞く\n② {{パーシャル・ディクテーション}}：聞き取れなかった2〜3文だけ書き取る\n③ スクリプトで答え合わせ。原因を確認（音のつながり／a・the・of などの短い語）\n④ {{オーバーラッピング}}→{{シャドーイング}}\n⑤ もう一度、何も見ずに聞く\n\n■ 素材\nVOA Learning English（初級）から\n何も見ずに約95%聞き取れたら BBC 6 Minute English（中級）へ\n予備は Listening Time Podcast\n\n■ 決まり\n単語を調べるのは5分以内"},
 
-  /* ---- リスニング 30分 ---- */
-  {id:"intens",  cat:"listening", name:"精聴（1日1本）",              core:true,  dayType:"both",
-   note:"15分・VOA Learning English（初級）から／何も見ずに約95%聞き取れたら BBC 6 Minute English（中級）へ、予備は Listening Time Podcast／①何も見ずに聞く ②{{パーシャル・ディクテーション}}（聞き取れなかった2〜3文だけ）③スクリプトで答え合わせし原因を確認（音のつながり、a・the・of などの短い語）④{{オーバーラッピング}}と{{シャドーイング}} ⑤もう一度、何も見ずに聞く／単語を調べるのは5分以内／この中でやる3つ：{{パーシャル・ディクテーション}}→{{オーバーラッピング}}→{{シャドーイング}}"},
-  {id:"extens",  cat:"listening", name:"多聴",                        core:true,  dayType:"both",
-   note:"15分・1回で大まかな内容を日本語で言える素材だけ／5分の間に2回ついていけなくなったら難しすぎる／止めない、巻き戻さない／聞き流しは数えない。集中して聞いた分だけ記録／読み終えた本の聞き直しは半分まで"},
+  {id:"extens", cat:"listening", name:"多聴", core:true, dayType:"both",
+   note:"15分\n\n■ 素材（この4つから）\n① 多読で読み終えた本の音声 ← いちばん確実。ただし15分の半分まで\n② まだ読んでいない Graded Reader の音声（多読と同じ Stage）\n③ {{精聴}}でもう終えた回（先週の VOA など）\n④ 学習者向けポッドキャスト（Listening Time Podcast ／ Easy Stories in English ／ Culips）\n\n■ 選ぶ基準\n1回聞いて、大まかな内容を日本語で言えるもの\n{{精聴}}より一段やさしいものを選ぶ\n最初の5分で2回ついていけなくなったら、その場でやめて次へ\nNetflix・YouTube の vlog・ネイティブ向けニュースは、まだ早い\n\n■ 決まり\n止めない、巻き戻さない\n聞き流しは数えない。集中して聞いた分だけ記録する"},
 
-  /* ---- スピーキング（精聴15分の中で） ---- */
-  {id:"overlap", cat:"speaking",  name:"オーバーラッピング",           core:false, dayType:"both",
-   note:"{{精聴}}15分の中で・スクリプトを見ながら音声に声を重ねる／必ず内容を理解してから"},
-  {id:"shadow",  cat:"speaking",  name:"シャドーイング 2〜3回",        core:false, dayType:"both",
-   note:"{{精聴}}15分の中で・文字を見ず、少し遅れて追う／理解した後にやるほうが聞き取りが伸びる／小声のマンブリングから、なめらかに言えるまで"},
-  {id:"rec1min", cat:"speaking",  name:"週1：1分要約を録音",           core:false, dayType:"off",
-   note:"その週に聞いた素材を1分間英語で要約して録音／聞いた時間と読んだ語数の週合計も出す"},
-  {id:"tutor",   cat:"speaking",  name:"オンライン講師 週1〜2",        core:false, dayType:"off",
-   note:"6か月目から・インプットだけでは話せるようにならない。ここは削らない"},
+  {id:"overlap", cat:"speaking", name:"オーバーラッピング", core:false, dayType:"both",
+   note:"{{精聴}}15分の中で（手順④）\n\nスクリプトを見ながら、音声と同時に声を重ねて読む\n必ず内容を理解してから"},
 
-  /* ---- ライティング（精聴15分の中で） ---- */
-  {id:"dicta",   cat:"writing",   name:"パーシャル・ディクテーション", core:false, dayType:"both",
-   note:"{{精聴}}15分の中で・聞き取れなかった2〜3文だけ／点数をつけるためではなく、どこが聞き取れないかを見つける／全文は書かない"},
-  {id:"journal", cat:"writing",   name:"学習記録",                     core:false, dayType:"both",
-   note:"その日の{{多聴}}の分数と、{{音声付き多読}}で読んだ語数／毎日欠かさず書く"},
+  {id:"shadow", cat:"speaking", name:"シャドーイング 2〜3回", core:false, dayType:"both",
+   note:"{{精聴}}15分の中で（手順④）\n\n文字を見ず、音声を少し遅れて追いかけて声に出す\n小声のマンブリングから始めて、なめらかに言えるまで繰り返す\n理解した後にやるほうが、聞き取りが伸びる"},
 
-  /* ---- 語彙力 10分 ---- */
-  {id:"ngsl",    cat:"vocab",     name:"NGSL頻出語のSRS",              core:true,  dayType:"both",
-   note:"10分・NGSL（約2,800語で一般的な英文の92%以上をカバー）を Anki で／カードに音声と例文／新規は1日10枚まで／復習が80枚を超えたら新規を止める／2,000語ほど覚えたら、精聴のスクリプトから3〜5文をカード化（センテンスマイニング）へ"},
+  {id:"rec1min", cat:"speaking", name:"週1：1分要約を録音", core:false, dayType:"off",
+   note:"週1\n\n① その週に聞いた素材を、1分間英語で要約して録音する\n② 聞いた時間と読んだ語数の週合計を出す"},
 
-  /* ---- リーディング 25分 ---- */
-  {id:"extread", cat:"reading",   name:"音声付き多読",                 core:true,  dayType:"both",
-   note:"25分・Graded Readers。Oxford Bookworms Stage 1〜2から、Penguin Readers なども／1ページ（約250語）に知らない語1〜5個が目安、6個以上ならレベルを下げる／辞書を引かない・飛ばす・つまらない本はやめて次へ／音声を聞きながら読む。遅く感じたら黙読でよい／1分150語で楽に読めたら1段階上げる"},
-  {id:"levelup", cat:"reading",   name:"月1：レベル上げの確認",        core:false, dayType:"off",
-   note:"1つ上のレベルの本で「1ページの未知語」を数えて、上げられるか確かめる"}
+  {id:"tutor", cat:"speaking", name:"オンライン講師 週1〜2", core:false, dayType:"off",
+   note:"6か月目から\n\nオンライン講師のレッスンを週1〜2回\nインプットだけでは話せるようにならない。ここは削らない"},
+
+  {id:"dicta", cat:"writing", name:"パーシャル・ディクテーション", core:false, dayType:"both",
+   note:"{{精聴}}15分の中で（手順②）\n\n聞き取れなかった2〜3文だけを書き取る\n全文は書かない\n点数をつけるためではなく、どこが聞き取れないかを見つける作業"},
+
+  {id:"journal", cat:"writing", name:"学習記録", core:false, dayType:"both",
+   note:"毎日欠かさず書く\n\n① その日の{{多聴}}の分数（集中して聞いた分だけ）\n② {{音声付き多読}}で読んだ語数\n\nこの2つの週合計を、週1で出す"},
+
+  {id:"ngsl", cat:"vocab", name:"NGSL頻出語のSRS", core:true, dayType:"both",
+   note:"10分\n\n■ やること\nNGSL（約2,800語で一般的な英文の92%以上をカバー）を Anki で\nカードには音声と例文を付ける\n\n■ 枚数\n新規は1日10枚まで\n復習が1日80枚を超えたら、新規の追加を止める\n合計10分以内に収める\n\n■ 切り替え\nNGSL を2,000語ほど覚えたら、{{精聴}}のスクリプトから3〜5文をカード化（センテンスマイニング）へ"},
+
+  {id:"extread", cat:"reading", name:"音声付き多読", core:true, dayType:"both",
+   note:"25分\n\n■ 素材\nGraded Readers\nOxford Bookworms Stage 1〜2から始め、Penguin Readers なども\n\n■ 難しさの基準\n1ページ（約250語）に知らない単語が1〜5個\n6個以上なら難しすぎる。レベルを下げる\n\n■ 三原則\n辞書は引かない／わからないところは飛ばす／つまらない本はやめて次の本へ\n\n■ やり方\n音声を聞きながら読む。音声が遅く感じたら黙読に切り替えてよい\n1分150語で楽に読めるようになったら、1段階上げる"},
+
+  {id:"levelup", cat:"reading", name:"月1：レベル上げの確認", core:false, dayType:"off",
+   note:"月1\n\n1つ上のレベルの本で「1ページの未知語」を数える\n1〜5個に収まっていれば、レベルを上げてよい"}
 ];
 
 /* 配る一覧の版。記録が持っている版がこれより古ければ、タスクだけを
@@ -894,7 +904,7 @@ const DEFAULT_TASKS = [
    上の一覧を直したときは、この数字を1つ増やすこと。
    （時刻で比べていたが、端末で★を付け直すなどすると、その時刻が
      判定の時刻を追い越して入れ替えが届かなくなるのでやめた） */
-const TASKS_REV = 4;
+const TASKS_REV = 5;
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
@@ -2274,14 +2284,13 @@ const MARK = {
 };
 const MARK_RE = /\{\{([^{}\n]{1,40})\}\}|→/g;
 
-function paintNote(el, note){
-  el.textContent = "";
-  const s = typeof note==="string" ? note : "";
+/* 1行ぶんを組む。{{語}} はマーカー、→ は弱めた矢印にする */
+function paintLine(el, line){
   let i=0, m;
   MARK_RE.lastIndex = 0;              // 使い回す正規表現。戻し忘れると2回目で取りこぼす
-  while((m = MARK_RE.exec(s))){
-    if(m.index > i) el.appendChild(document.createTextNode(s.slice(i, m.index)));
-    if(m[0] === "→"){                 // 矢印は少し弱めて、語のほうを立てる
+  while((m = MARK_RE.exec(line))){
+    if(m.index > i) el.appendChild(document.createTextNode(line.slice(i, m.index)));
+    if(m[0] === "→"){
       const a=document.createElement("span"); a.className="ar"; a.textContent="→";
       el.appendChild(a);
     }else{
@@ -2296,7 +2305,24 @@ function paintNote(el, note){
     }
     i = MARK_RE.lastIndex;
   }
-  if(i < s.length) el.appendChild(document.createTextNode(s.slice(i)));
+  if(i < line.length) el.appendChild(document.createTextNode(line.slice(i)));
+}
+
+/* 控えは1行ずつ組む。改行をそのまま段に使えるので、手順が手順の形で読める。
+   「■ 」で始まる行は小見出し。空の行は、ひと息ぶんの空き。 */
+function paintNote(el, note){
+  el.textContent = "";
+  const s = typeof note==="string" ? note : "";
+  for(const line of s.split("\n")){
+    if(line.trim()===""){
+      const g=document.createElement("span"); g.className="gap"; el.appendChild(g); continue;
+    }
+    const head = line.startsWith("■ ");
+    const row = document.createElement("span");
+    row.className = head ? "nh" : "ln";
+    paintLine(row, head ? line.slice(2) : line);
+    el.appendChild(row);
+  }
 }
 
 /* ---- 編集 ---- */
@@ -2332,9 +2358,13 @@ function renderEdit(){
       for(const d in state.log) state.log[d]=state.log[d].filter(x=>x!==t.id);
       save({tasks:true, offId:t.id, offDays}); renderEdit(); render();
     };
-    const nt=document.createElement("input");
-    nt.className="ent"; nt.value=t.note; nt.placeholder="メモ（任意）";
-    nt.oninput=()=>{ t.note=nt.value; save({tasks:true}); };
+    const nt=document.createElement("textarea");
+    nt.className="ent"; nt.value=t.note; nt.placeholder="メモ（任意・改行できます）";
+    nt.rows=1;
+    /* 中身に合わせて高さを変える。固定だと、長い控えが読めない */
+    const fit=()=>{ nt.style.height="auto"; nt.style.height=(nt.scrollHeight+2)+"px"; };
+    nt.oninput=()=>{ t.note=nt.value; fit(); save({tasks:true}); };
+    setTimeout(fit,0);
     nt.onblur=()=>render();
     r.append(inp,sel2,sel3,st,rm,nt); el.appendChild(r);
   });
