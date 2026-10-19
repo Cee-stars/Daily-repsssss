@@ -741,7 +741,9 @@ body{
                autocapitalize="off" spellcheck="false" placeholder="Cloudflare に入れたものと同じ文字列">
         <button type="button" class="eye" id="cfKeyEye" aria-label="鍵を表示">&#128065;</button>
       </div>
-      <div class="hint">Cloudflare の Worker → 設定 → 変数とシークレットに、<b>シークレット</b>として入れた <b>REPS_KEY</b> と同じものです。</div>
+      <button type="button" class="ghost" id="btnCfKeyCopy" hidden style="margin-top:8px">この端末の鍵をコピー</button>
+      <div class="hint">Cloudflare の Worker → 設定 → 変数とシークレットに、<b>シークレット</b>として入れた <b>REPS_KEY</b> と同じものです。<br>
+        すでにつないである端末では、<b>👁 を押すといま使っている鍵が出ます</b>。ほかの端末や2秒ドリルに渡すときに使ってください。</div>
     </div>
 
     <div class="field">
@@ -2450,6 +2452,8 @@ $("#syncChip").onclick=()=>{
   $("#cfSetup").hidden = $("#ghSetup").hidden;
   $("#ghWrap").hidden  = $("#ghSetup").hidden;
   $("#cfKey").value = "";
+  $("#cfKey").type  = "password";
+  $("#btnCfKeyCopy").hidden = !cfReady();
   $("#cfUrl").value = ls(CF_URL_LS);
   $("#cfCheck").hidden = true;
   $("#btnCfOff").hidden = !cfReady();
@@ -2458,9 +2462,24 @@ $("#syncChip").onclick=()=>{
 
   $("#sheetSync").classList.add("on");
 };
+/* 👁 は「隠す／見せる」だけでなく、欄が空なら保存してある鍵を出す。
+   鍵は端末の中にあるのに取り出せない、という詰まり方を無くすため。 */
 $("#cfKeyEye").onclick=()=>{
   const el=$("#cfKey");
+  if(el.type==="password" && !el.value && cfReady()) el.value = cfKey();
   el.type = el.type==="password" ? "text" : "password";
+};
+$("#btnCfKeyCopy").onclick=async()=>{
+  const k = cfKey();
+  if(!k){ toast("この端末はまだつないでいません"); return; }
+  try{
+    await navigator.clipboard.writeText(k);
+    toast("鍵をコピーしました");
+  }catch(e){
+    /* クリップボードが使えないときは、欄に出して自分で選べるようにする */
+    const el=$("#cfKey"); el.value=k; el.type="text"; el.focus(); el.select();
+    toast("コピーできないので、欄に出しました。長押しでコピーしてください");
+  }
 };
 $("#btnCfSave").onclick=()=>{
   const k=$("#cfKey").value.trim(), u=$("#cfUrl").value.trim();
