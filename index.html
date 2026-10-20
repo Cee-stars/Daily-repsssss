@@ -147,6 +147,26 @@ button{background:none;border:0;cursor:pointer}
 .task[data-done="1"] .nt{opacity:.55}
 .task .star{flex:0 0 auto;font-size:14px;color:var(--accent)}
 
+/* 控えは畳んでおく。1行目（分数など）だけ見せて、残りは触ったときに出す */
+.task{align-items:flex-start}
+.task .box{margin-top:1px}
+.task .nt .dt{display:none}
+.task[data-open="1"] .nt .dt{display:block;margin-top:7px}
+.task .nt .sum{display:block}
+.task .chev{
+  flex:0 0 auto;margin-top:2px;width:24px;height:24px;border-radius:8px;
+  display:grid;place-items:center;color:var(--dim);font-size:11px;font-weight:900;
+  transition:transform .25s var(--ease);
+}
+.task[data-open="1"] .chev{transform:rotate(180deg)}
+.task .more{
+  display:block;margin-top:6px;font-size:11px;font-weight:800;color:var(--dim);
+  letter-spacing:.04em;opacity:.8;
+}
+.task[data-open="1"] .more{display:none}
+/* 一度でも開いたら、案内は消す。▼ だけで分かるようになるので */
+body[data-hinted="1"] .task .more{display:none}
+
 /* ---- 下部ボタン ---- */
 .acts{margin-top:26px;display:grid;gap:9px}
 .acts button{
@@ -920,6 +940,7 @@ const REMOTE = "data/state.json";   // Artifact 版の保存先
 const TOKEN_KEY = "dailyreps:sync:token";
 const GIST_KEY  = "dailyreps:sync:gistId";
 const AUTO_KEY  = "dailyreps:sync:auto";
+const HINT_KEY  = "dailyreps:fold:hinted";   /* 手順の開き方を一度覚えたら案内を出さない */
 const LAST_KEY  = "dailyreps:sync:last";
 const ERR_KEY   = "dailyreps:sync:error";   // 黙って止まらないよう、最後の失敗を残す
 const DAYTYPE_KEY = "dailyreps:daytype";    // いま見ている日タイプ。端末ごとの見せ方で、記録ではない
@@ -1704,8 +1725,27 @@ function renderTasks(){
       b.innerHTML='<span class="box">&#10003;</span><span class="tx"><span class="nm"></span>'+
         (t.note?'<span class="nt"></span>':'')+'</span>'+(t.core?'<span class="star">&#9733;</span>':'');
       b.querySelector(".nm").textContent=t.name;
-      if(t.note) paintNote(b.querySelector(".nt"), t.note);
-      b.onclick=()=>toggle(t.id,b);
+      let hasRest=false;
+      if(t.note) hasRest = paintNoteSplit(b.querySelector(".nt"), t.note);
+      if(hasRest){
+        const ch=document.createElement("span");
+        ch.className="chev"; ch.textContent="\u25BC";
+        b.appendChild(ch);
+      }
+      /* ✓ の四角はチェック。それ以外を触ると手順が開く。
+         手順が無いタスクは、どこを触ってもチェックのまま。 */
+      b.querySelector(".box").onclick=e=>{ e.stopPropagation(); toggle(t.id,b); };
+      b.onclick = hasRest
+        ? ()=>{
+            if(b.dataset.open==="1") delete b.dataset.open;
+            else {
+              b.dataset.open="1";
+              if(!document.body.dataset.hinted){
+                document.body.dataset.hinted="1"; lsPut(HINT_KEY,"1");
+              }
+            }
+          }
+        : ()=>toggle(t.id,b);
       el.appendChild(b);
       drew++;
     }
@@ -2316,6 +2356,35 @@ function paintLine(el, line){
 
 /* 控えは1行ずつ組む。改行をそのまま段に使えるので、手順が手順の形で読める。
    「■ 」で始まる行は小見出し。空の行は、ひと息ぶんの空き。 */
+/* 控えを「1行目（まとめ）」と「残り（詳細）」に分けて描く。
+   触るまでは1行目だけ見せる。手順が長くなっても一覧が潰れない。 */
+function paintNoteSplit(el, note){
+  el.textContent = "";
+  const lines = (typeof note === "string" ? note : "").split("\n");
+  let i = 0;
+  while(i < lines.length && lines[i].trim() === "") i++;
+  const head = i < lines.length ? lines[i] : "";
+  const rest = lines.slice(i + 1).join("\n");
+
+  const sum = document.createElement("span");
+  sum.className = "sum";
+  paintLine(sum, head.startsWith("■ ") ? head.slice(2) : head);
+  el.appendChild(sum);
+
+  const hasRest = rest.trim() !== "";
+  if(hasRest){
+    const dt = document.createElement("span");
+    dt.className = "dt";
+    paintNote(dt, rest);
+    el.appendChild(dt);
+    const more = document.createElement("span");
+    more.className = "more";
+    more.textContent = "さわると手順が出ます";
+    el.appendChild(more);
+  }
+  return hasRest;
+}
+
 function paintNote(el, note){
   el.textContent = "";
   const s = typeof note==="string" ? note : "";
@@ -2770,6 +2839,7 @@ document.addEventListener("visibilitychange",()=>{
 });
 
 fillCatSelect();
+if(ls(HINT_KEY)==="1") document.body.dataset.hinted="1";
 render();
 SYNC.init();
 </script>
