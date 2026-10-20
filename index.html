@@ -147,6 +147,25 @@ button{background:none;border:0;cursor:pointer}
 .task[data-done="1"] .nt{opacity:.55}
 .task .star{flex:0 0 auto;font-size:14px;color:var(--accent)}
 
+/* その日の様子を見て出す一言。語調は中身で変える */
+.coach{
+  margin-top:14px;padding:13px 14px;border-radius:14px;
+  background:var(--bg);border:1px solid var(--line);
+  font-size:13px;font-weight:700;line-height:1.7;color:var(--dim);
+}
+.coach b{display:block;font-size:13.5px;font-weight:900;color:var(--ink);margin-bottom:2px}
+.coach[data-tone="win"]{background:#E6F7F1;border-color:#C9EDE0}
+.coach[data-tone="win"] b{color:#00754F}
+.coach[data-tone="burn"]{background:#FFEBF3;border-color:#F8CFDF}
+.coach[data-tone="burn"] b{color:#B00A46}
+.coach[data-tone="push"]{background:var(--accent-soft);border-color:#FFD9BA}
+.coach[data-tone="push"] b{color:#B4530C}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .coach[data-tone="win"]{background:#10241C;border-color:#1D3A2F}
+  :root:not([data-theme="light"]) .coach[data-tone="burn"]{background:#2A1118;border-color:#45202C}
+  :root:not([data-theme="light"]) .coach[data-tone="push"]{background:#2A1C10;border-color:#45301A}
+}
+
 /* 控えは畳んでおく。1行目（分数など）だけ見せて、残りは触ったときに出す */
 .task{align-items:flex-start}
 .task .box{margin-top:1px}
@@ -709,6 +728,7 @@ body{
   <div class="big"><span class="n" id="doneN">0</span><span class="d" id="allN">/ 0</span><span class="u">レップ</span></div>
   <div class="rack" id="rack"></div>
   <div class="core" id="coreLine"></div>
+  <div class="coach" id="coach" hidden><b id="coachHead"></b><span id="coachBody"></span></div>
 </section>
 
 <section class="week">
@@ -1598,6 +1618,104 @@ function toggle(id, src){
   }
 }
 
+
+/* ---- その日の様子を見て出す一言 ----
+   外の AI は呼ばない。通信もアカウントも要らないので、圏外でも必ず出る。
+   見ているのは：やった数、何を残しているか、時刻、過ぎた日か、連続日数。 */
+const MINUTES = {intens:15, extens:15, ngsl:10, extread:20, resp2s:5};
+/* 残りの重さ順。先に手を付けてほしいものを上に置く */
+const ORDER = ["resp2s","intens","extread","ngsl","extens"];
+
+function nameOf(id){
+  const t = state.tasks.find(x=>x.id===id);
+  return t ? t.name.replace(/（.*?）/g,"").trim() : id;
+}
+function restMinutes(ids){
+  return ids.reduce((n,id)=>n+(MINUTES[id]||0), 0);
+}
+/* 日ごとに変えて、同じ言い回しが続かないようにする */
+function pick(arr, seed){
+  let h=0; for(let i=0;i<seed.length;i++) h=(h*31+seed.charCodeAt(i))|0;
+  return arr[Math.abs(h)%arr.length];
+}
+
+function coachFor(dayIso, tasks, done){
+  const all   = tasks.length;
+  const dn    = done.length;
+  const left  = tasks.filter(t=>!done.includes(t.id)).map(t=>t.id);
+  const isToday = dayIso === today();
+  const hour  = new Date().getHours();
+  const mins  = restMinutes(left);
+  const core  = tasks.filter(t=>t.core);
+  const coreLeft = core.filter(t=>!done.includes(t.id)).length;
+  const st    = streak();
+
+  if(!all) return null;
+
+  /* --- 過ぎた日。もう動かせないので、短く言うだけ --- */
+  if(!isToday){
+    if(dn === 0) return {tone:"burn", head:"この日は 0 でした。",
+      body:"終わった日は戻せません。悔しさは今日に使ってください。"};
+    if(dn === all) return {tone:"win", head:"この日は全部やりきっています。",
+      body:"こういう日が積み上がって、話せる側に移ります。"};
+    return {tone:"", head:"この日は "+dn+" / "+all+"。",
+      body:"残した "+left.length+"つは、もう取り返せません。今日のぶんに集中してください。"};
+  }
+
+  /* --- 全部終わった --- */
+  if(dn === all){
+    const wins = [
+      {head:"今日のぶん、全部終わりました。", body:"ここで止めるのが正解です。明日も開けるのは、今日やりすぎなかった人だけです。"},
+      {head:"全部やりきりました。", body:"精聴は明日が2日目です。同じ素材のまま、④のシャドーイングを7分に伸ばしてください。"},
+      {head:"今日のぶん、完了です。", body:"読んだ語数を書き忘れていませんか。数字が残らないと、伸びたことに気づけません。"},
+      {head:"全部終わりました。", body:"今日出会った言い回しで、自分では並べられなかったものを1つ、2秒ドリルの型に足しておくと明日が楽です。"}
+    ];
+    const w = pick(wins, dayIso);
+    if(st >= 7)  return {tone:"win", head:st+"日つづいています。", body:"ここまで来たら、崩すのは1日休むことだけです。明日も5分でいいので開いてください。"};
+    if(st === 3) return {tone:"win", head:"3日つづきました。", body:"いちばん切れやすいのがここです。明日を越えると、急に軽くなります。"};
+    return {tone:"win", head:w.head, body:w.body};
+  }
+
+  /* --- ひとつも手をつけていない --- */
+  if(dn === 0){
+    if(hour < 10) return {tone:"push", head:"まだ 0 です。",
+      body:"2秒ドリルは5分です。そこだけ押して、残りは夜でも間に合います。"};
+    if(hour < 18) return {tone:"push", head:"まだ 0 / "+all+" です。",
+      body:"全部やると"+mins+"分。無理なら、"+nameOf(ORDER.find(id=>left.includes(id))||left[0])+"だけでも先に片づけてください。"};
+    if(hour < 22) return {tone:"burn", head:"今日、まだ1つも触っていません。",
+      body:"あと"+(24-hour)+"時間で、今日のぶんは全部燃えます。見ているだけでは1語も増えません。"};
+    return {tone:"burn", head:"0 / "+all+" のまま日付が変わります。",
+      body:"いまから2秒ドリルの5分だけ。0 と 1 は、明日の自分にとって別物です。"};
+  }
+
+  /* --- 途中 --- */
+  const nextId = ORDER.find(id=>left.includes(id)) || left[0];
+  const onlyEasy = left.some(id=>["intens","extread"].includes(id)) && done.every(id=>!["intens","extread"].includes(id));
+
+  if(hour >= 22) return {tone:"burn", head:"のこり "+left.length+"つ、"+mins+"分。",
+    body:"間に合わないなら"+nameOf(nextId)+"だけ。全部諦めるのと、1つ残すのでは、明日の重さが違います。"};
+  if(onlyEasy) return {tone:"push", head:"軽いものから片づきましたね。",
+    body:"重いほうが"+mins+"分ぶん残っています。"+nameOf(nextId)+"を先に置くと、あとが楽になります。"};
+  if(coreLeft === 0 && left.length) return {tone:"win", head:"★ のコア習慣は全部終わっています。",
+    body:"連続日数はこれで続きます。残りは余力があればで大丈夫です。"};
+  if(left.length === 1) return {tone:"push", head:"あと1つ、"+nameOf(nextId)+"だけです。",
+    body:MINUTES[nextId] ? MINUTES[nextId]+"分です。ここで閉じるのはもったいない。" : "ここで閉じるのはもったいない。"};
+  const why = (MINUTES[nextId]||99) <= 10
+    ? "次は"+nameOf(nextId)+"。"+MINUTES[nextId]+"分で終わるので、先に片づけると残りが軽く見えます。"
+    : "次は"+nameOf(nextId)+"をおすすめします。重いものを先に置くほうが、最後まで届きます。";
+  return {tone:"", head:"のこり "+left.length+"つ、"+mins+"分。", body:why};
+}
+
+function renderCoach(tasks, done){
+  const c = coachFor(sel, tasks, done);
+  const el = $("#coach");
+  if(!c){ el.hidden = true; return; }
+  el.hidden = false;
+  if(c.tone) el.dataset.tone = c.tone; else delete el.dataset.tone;
+  $("#coachHead").textContent = c.head;
+  $("#coachBody").textContent = c.body;
+}
+
 /* ---- 連続日数：コア習慣を全部やった日が続いた数 ---- */
 function coreDone(d){
   const core = tasksFor(d).filter(t=>t.core);
@@ -1643,6 +1761,7 @@ function render(){
   const cd=core.filter(t=>done.includes(t.id)).length;
   $("#coreLine").innerHTML = core.length ? "★ コア習慣 <b>"+cd+"/"+core.length+"</b>" : "";
 
+  renderCoach(tasks, done);
   renderDayMode();
   renderWeek();
   renderTasks();
