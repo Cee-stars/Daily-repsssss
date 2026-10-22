@@ -2930,7 +2930,7 @@ document.addEventListener("visibilitychange",()=>{
 });
 
 /* ---- 3D 演出の起動 ---- */
-let showDone = ls(SHOW_KEY)!=="0";   /* 既定は「消さない」。消すと、やった証拠が画面から消える */
+let showDone = ls(SHOW_KEY)==="1";   /* 既定は「消す」。消えるのは不具合ではなく、隕石になってヌシに当たる演出。残したい人は一覧の切り替えで「消さない」にできる */
 FX.init();
 addEventListener("scroll", updatePin, {passive:true});
 addEventListener("resize", updatePin, {passive:true});
