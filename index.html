@@ -338,6 +338,43 @@ body{
 
 /* 隕石が来るあいだだけ、空を実写に差し替える。
    この素材はグリーンバックではないので切り抜けない。背景として、そのまま流す */
+/* 漂う塵。カードの中の情景で、催促の演出（燻り）とは別物。
+   JS もキャンバスも使わない。3枚の層をそれぞれ違う速さで上に流し、
+   粒の位置は背景の放射グラデーションで描く。 */
+.arena .dust{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:1}
+.arena .dust i{
+  position:absolute;left:0;right:0;top:0;height:200%;
+  background-repeat:no-repeat;
+  animation:dustDrift linear infinite;
+  will-change:transform;
+}
+.arena .dust i:nth-child(1){
+  opacity:.5; animation-duration:42s;
+  background-image:
+    radial-gradient(1.6px 1.6px at 12% 8%,  rgba(255,255,255,.9), transparent 60%),
+    radial-gradient(1.2px 1.2px at 38% 21%, rgba(198,222,255,.75), transparent 60%),
+    radial-gradient(1.8px 1.8px at 71% 13%, rgba(255,255,255,.8), transparent 60%),
+    radial-gradient(1.3px 1.3px at 89% 33%, rgba(214,196,255,.7), transparent 60%),
+    radial-gradient(1.5px 1.5px at 25% 41%, rgba(255,255,255,.65), transparent 60%);
+}
+.arena .dust i:nth-child(2){
+  opacity:.38; animation-duration:64s; animation-delay:-11s;
+  background-image:
+    radial-gradient(1.1px 1.1px at 55% 6%,  rgba(255,255,255,.8), transparent 60%),
+    radial-gradient(1.4px 1.4px at 18% 28%, rgba(168,226,255,.7), transparent 60%),
+    radial-gradient(1px 1px   at 82% 44%,   rgba(255,255,255,.6), transparent 60%),
+    radial-gradient(1.3px 1.3px at 46% 37%, rgba(255,235,205,.6), transparent 60%);
+}
+.arena .dust i:nth-child(3){
+  opacity:.26; animation-duration:88s; animation-delay:-37s;
+  background-image:
+    radial-gradient(.9px .9px at 31% 15%, rgba(255,255,255,.7), transparent 60%),
+    radial-gradient(1.1px 1.1px at 67% 30%, rgba(214,196,255,.6), transparent 60%),
+    radial-gradient(.9px .9px at 93% 19%, rgba(255,255,255,.55), transparent 60%);
+}
+@keyframes dustDrift{ from{transform:translate3d(0,0,0)} to{transform:translate3d(0,-50%,0)} }
+@media (prefers-reduced-motion:reduce){ .arena .dust i{animation:none} }
+
 .arena .skyFilm{
   position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
   opacity:0;pointer-events:none;transition:opacity .5s var(--ease);
@@ -703,6 +740,7 @@ body{
     <source src="meteor.mp4" type="video/mp4">
     <source src="meteor.webm" type="video/webm">
   </video>
+  <div class="dust" aria-hidden="true"><i></i><i></i><i></i></div>
   <div class="floor"></div>
   <div class="stage"><div class="mon" id="mon"><div class="monInner" id="monInner"></div></div></div>
   <div class="win"><div><b>撃破</b><small id="winSub"></small></div></div>
