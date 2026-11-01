@@ -972,6 +972,12 @@ const DEFAULT_TASKS = [
   {id:"scene", cat:"speaking", name:"瞬間英作文 場面モード", core:false, dayType:"both",
    note:"10分・毎日。場面を決めて、その中で組み立てる\n\n■ やり方\n① 今週の場面を1つ決める（店・駅・道・初対面など）\n② その場面で相手が言いそうなことに、日本語を見ずに返す\n③ 自分から始める一言も、同じ場面で言う\n④ 言えなかった返しを1つ書き出す\n\n■ コツ\n場面は3〜5個に固定して、数週間は替えない。毎回替えると1つの場面に1回しか当たらない\n台本どおりに言えることを目標にしない。相手の言い方が変わっても返せるかを見る\n④の1つは{{Ankiフレーズ}}へ入れる\n\n■ 効果\n文単位の{{瞬間英作文}}と、人が相手の{{レッスン}}の間を埋める\n場面ごとに「最初の一言」が決まるので、自分から始められる\n\n■ 素材\n場面は自分が実際に行く場所から選ぶ。作らない\n2秒ドリルのアプリの会話デッキを使ってもよい"},
 
+  {id:"atsuw", cat:"speaking", name:"Atsu 単語10", core:false, dayType:"both",
+   note:"毎日"},
+
+  {id:"atsus", cat:"speaking", name:"Atsu 構文5", core:false, dayType:"both",
+   note:"毎日"},
+
   {id:"prep5", cat:"speaking", name:"レッスン準備", core:false, dayType:"lesson",
    note:"5分・レッスン日。使うものを先に決める\n\n■ やり方\n① 今日使うフレーズを3つ決める\n② 講師に聞く質問を2つ決める\n\n■ コツ\n3つと2つ。増やさない\nフレーズは{{Ankiフレーズ}}から選ぶ\n質問は答えを用意しない。聞きたいことだけ決める\n\n■ 効果\n何を使うかが先に決まっているので、レッスン中に話題で迷わない\n使えたかどうかを、あとで確かめられる\n\n■ 素材\n{{Ankiフレーズ}}のカードと、その週に気になったこと"},
 
@@ -989,7 +995,7 @@ const DEFAULT_TASKS = [
    上の一覧を直したときは、この数字を1つ増やすこと。
    （時刻で比べていたが、端末で★を付け直すなどすると、その時刻が
      判定の時刻を追い越して入れ替えが届かなくなるのでやめた） */
-const TASKS_REV = 29;
+const TASKS_REV = 30;
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
@@ -1672,7 +1678,7 @@ function toggle(id, src){
    見ているのは：やった数、何を残しているか、時刻、過ぎた日か、連続日数。 */
 const MINUTES = {extread:20, aitalk:20, narrow:15, repeat:15, ankiph:10, ngsl:10, shun:10, scene:10, t432:10, prep5:5, lesson25:25, toanki:5};
 /* 残りの重さ順。先に手を付けてほしいものを上に置く */
-const ORDER = ["ankiph","prep5","lesson25","toanki","ngsl","shun","scene","aitalk","t432","repeat","narrow","extread"];
+const ORDER = ["ankiph","prep5","lesson25","toanki","ngsl","atsuw","atsus","shun","scene","aitalk","t432","repeat","narrow","extread"];
 
 function nameOf(id){
   const t = state.tasks.find(x=>x.id===id);
