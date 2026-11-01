@@ -989,7 +989,7 @@ const DEFAULT_TASKS = [
    上の一覧を直したときは、この数字を1つ増やすこと。
    （時刻で比べていたが、端末で★を付け直すなどすると、その時刻が
      判定の時刻を追い越して入れ替えが届かなくなるのでやめた） */
-const TASKS_REV = 28;
+const TASKS_REV = 29;
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
@@ -1088,8 +1088,16 @@ function markTs(s,d,id){
 /* ---- 2つの記録を突き合わせる（チェック1つずつで新しいほうを残す） ---- */
 function mergeState(a,b){
   a=normalize(a); b=normalize(b);
+  /* 一覧は版（tasksRev）で決める。版が同じときだけ、手編集の新しさ（tasksAt）で決める。
+     tasksAt だけで決めていたため、古い版の端末が持つ一覧に、新しい版の印だけが
+     乗って残ることがあった。差し替えは normalize の tasksRev < TASKS_REV でしか
+     走らないので、印が上がった時点でどの端末でも二度と差し替わらなくなる。
+     実際にそれが起きて、置き場の記録が古い一覧のまま固まっていた。 */
+  const takeB = a.meta.tasksRev === b.meta.tasksRev
+    ? b.meta.tasksAt > a.meta.tasksAt
+    : b.meta.tasksRev > a.meta.tasksRev;
   const out = {
-    tasks: (b.meta.tasksAt > a.meta.tasksAt ? b.tasks : a.tasks).map(t=>({...t})),
+    tasks: (takeB ? b.tasks : a.tasks).map(t=>({...t})),
     log:   {},
     meta:  {tasksAt:  Math.max(a.meta.tasksAt, b.meta.tasksAt),
             tasksRev: Math.max(a.meta.tasksRev, b.meta.tasksRev), marks:{}, cleared:{}}
