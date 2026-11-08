@@ -67,7 +67,9 @@ button{background:none;border:0;cursor:pointer}
   box-shadow:0 6px 20px rgba(21,26,36,.05);margin-bottom:14px;
 }
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px}
-.seg button{padding:9px 6px;border-radius:12px;background:#F0F3F9;color:var(--dim);font-weight:800;font-size:13px}
+.seg button{padding:7px 6px;border-radius:12px;background:#F0F3F9;color:var(--dim);font-weight:800;font-size:13px;line-height:1.25}
+.seg button b{display:block;font-weight:800}
+.seg button small{display:block;font-size:11px;font-weight:700;opacity:.72;letter-spacing:.02em}
 .seg button[data-on="1"]{background:#FFF3E8;color:var(--accent)}
 .hero .date{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:.06em}
 .hero .msg{font-family:var(--display);font-size:20px;font-weight:900;margin-top:6px;line-height:1.35}
@@ -758,8 +760,8 @@ body{
 
 <section class="hero">
   <div class="seg" id="daySeg">
-    <button type="button" data-mode="off">レッスンなし日</button>
-    <button type="button" data-mode="lesson">レッスン日</button>
+    <button type="button" data-mode="off"><b>レッスンなし日</b><small>インプット</small></button>
+    <button type="button" data-mode="lesson"><b>レッスン日</b><small>アウトプット</small></button>
   </div>
   <div class="date" id="dateLine"></div>
   <div class="msg" id="msg"></div>
@@ -931,8 +933,8 @@ const C = Object.fromEntries(CATS.map(c=>[c.id,c]));
      off  … レッスンなし日の画面にだけ出す */
 const DAY_TYPES = [
   {id:"both",   jp:"毎日"},
-  {id:"lesson", jp:"レッスン日"},
-  {id:"off",    jp:"レッスンなし日"}
+  {id:"lesson", jp:"レッスン日：アウトプット"},
+  {id:"off",    jp:"レッスンなし日：インプット"}
 ];
 const DAYTYPE_IDS = DAY_TYPES.map(d=>d.id);
 
@@ -995,7 +997,7 @@ const DEFAULT_TASKS = [
    上の一覧を直したときは、この数字を1つ増やすこと。
    （時刻で比べていたが、端末で★を付け直すなどすると、その時刻が
      判定の時刻を追い越して入れ替えが届かなくなるのでやめた） */
-const TASKS_REV = 31;
+const TASKS_REV = 32;
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
