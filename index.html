@@ -71,6 +71,7 @@ button{background:none;border:0;cursor:pointer}
 .seg button b{display:block;font-weight:800}
 .seg button small{display:block;font-size:11px;font-weight:700;opacity:.72;letter-spacing:.02em}
 .seg button i{display:block;font-style:normal;font-size:10px;font-weight:700;opacity:.55;letter-spacing:.14em;margin-top:1px}
+.task .nt .lk{color:var(--accent);text-decoration:underline;word-break:break-all}
 .seg button[data-on="1"]{background:#FFF3E8;color:var(--accent)}
 .hero .date{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:.06em}
 .hero .msg{font-family:var(--display);font-size:20px;font-weight:900;margin-top:6px;line-height:1.35}
@@ -979,7 +980,7 @@ const DEFAULT_TASKS = [
    note:"30分・毎日"},
 
   {id:"atsuc", cat:"speaking", name:"Atsu 英会話", core:false, dayType:"both",
-   note:"毎日。Atsu のやり方で"},
+   note:"毎日。Atsu のやり方で\n\n教材（PDF）\nhttps://utagesystem.s3.ap-northeast-1.amazonaws.com/fY5AFNzr1dzY/qTjQyqtKeUDbTvXxSgzUtE3QoWTgKd8n9tksfT6O.pdf"},
 
   {id:"prep5", cat:"speaking", name:"レッスン準備", core:false, dayType:"lesson",
    note:"5分・レッスン日。使うものを先に決める\n\n■ やり方\n① 今日使うフレーズを3つ決める\n② 講師に聞く質問を2つ決める\n\n■ コツ\n3つと2つ。増やさない\nフレーズは{{Ankiフレーズ}}から選ぶ\n質問は答えを用意しない。聞きたいことだけ決める\n\n■ 効果\n何を使うかが先に決まっているので、レッスン中に話題で迷わない\n使えたかどうかを、あとで確かめられる\n\n■ 素材\n{{Ankiフレーズ}}のカードと、その週に気になったこと"},
@@ -998,7 +999,7 @@ const DEFAULT_TASKS = [
    上の一覧を直したときは、この数字を1つ増やすこと。
    （時刻で比べていたが、端末で★を付け直すなどすると、その時刻が
      判定の時刻を追い越して入れ替えが届かなくなるのでやめた） */
-const TASKS_REV = 34;
+const TASKS_REV = 35;
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
@@ -2505,7 +2506,7 @@ const MARK = {
   "音声付き多読":"reading",
   "Ankiフレーズ":"vocab", "NGSL":"vocab"
 };
-const MARK_RE = /\{\{([^{}\n]{1,40})\}\}|→/g;
+const MARK_RE = /\{\{([^{}\n]{1,40})\}\}|https?:\/\/[^\s"<>]+|→/g;
 
 /* 1行ぶんを組む。{{語}} はマーカー、→ は弱めた矢印にする */
 function paintLine(el, line){
@@ -2515,6 +2516,15 @@ function paintLine(el, line){
     if(m.index > i) el.appendChild(document.createTextNode(line.slice(i, m.index)));
     if(m[0] === "→"){
       const a=document.createElement("span"); a.className="ar"; a.textContent="→";
+      el.appendChild(a);
+    }else if(m[0].startsWith("http")){
+      const a=document.createElement("a");
+      a.className="lk"; a.href=m[0]; a.target="_blank"; a.rel="noopener noreferrer";
+      /* 行き先は完全な URL のまま、見た目だけ短くする。
+         長い URL をそのまま出すと、控えが URL だけで何行も埋まる。
+         長押しすればリンクごと写せる。 */
+      a.textContent = m[0].length > 38 ? m[0].slice(0, 36) + "…" : m[0];
+      a.title = m[0];
       el.appendChild(a);
     }else{
       const w=m[1].trim(), cat=C[MARK[w]];
