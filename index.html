@@ -70,6 +70,7 @@ button{background:none;border:0;cursor:pointer}
 .seg button{padding:7px 6px;border-radius:12px;background:#F0F3F9;color:var(--dim);font-weight:800;font-size:13px;line-height:1.25}
 .seg button b{display:block;font-weight:800}
 .seg button small{display:block;font-size:11px;font-weight:700;opacity:.72;letter-spacing:.02em}
+.seg button i{display:block;font-style:normal;font-size:10px;font-weight:700;opacity:.55;letter-spacing:.14em;margin-top:1px}
 .seg button[data-on="1"]{background:#FFF3E8;color:var(--accent)}
 .hero .date{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:.06em}
 .hero .msg{font-family:var(--display);font-size:20px;font-weight:900;margin-top:6px;line-height:1.35}
@@ -760,8 +761,8 @@ body{
 
 <section class="hero">
   <div class="seg" id="daySeg">
-    <button type="button" data-mode="off"><b>レッスンなし日</b><small>インプット</small></button>
-    <button type="button" data-mode="lesson"><b>レッスン日</b><small>アウトプット</small></button>
+    <button type="button" data-mode="off"><b>レッスンなし日</b><small>インプット</small><i>火木日</i></button>
+    <button type="button" data-mode="lesson"><b>レッスン日</b><small>アウトプット</small><i>月水金土</i></button>
   </div>
   <div class="date" id="dateLine"></div>
   <div class="msg" id="msg"></div>
