@@ -287,14 +287,18 @@ body[data-hinted="1"] .task .more{display:none}
   --arena-h-pin:104px;
 }
 
-/* 奥行きのある地の色。スクロールしても動かさない */
-body{
+/* 奥行きのある地の色。スクロールしても動かさない。
+   background-attachment:fixed でやると、スクロールのたびに画面全体を
+   描き直すことになり、特に端末で目に見えて重くなる。
+   固定の1枚を後ろに敷いて、一度だけ描かせる。 */
+body{ background:var(--bg); }
+body::before{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
   background:
     radial-gradient(1100px 620px at 50% -12%, #FFFFFF 0%, rgba(255,255,255,0) 58%),
     radial-gradient(760px 480px at 102% 2%, #E9EEFA 0%, rgba(233,238,250,0) 56%),
     radial-gradient(640px 420px at -8% 16%, #FDF0E6 0%, rgba(253,240,230,0) 58%),
     var(--bg);
-  background-attachment:fixed;
 }
 
 /* ---- アリーナ ---- */
@@ -310,7 +314,11 @@ body{
     0 3px 10px rgba(10,14,28,.18),
     inset 0 1px 0 rgba(255,255,255,.12);
   perspective:720px;perspective-origin:50% 44%;
-  transition:height .55s var(--spring), box-shadow .4s var(--ease), border-radius .4s var(--ease);
+  /* 高さは動かさない。貼り付く瞬間に 250px から 104px へ .55s かけて変えると、
+     その間ずっとレイアウトが走る。指を動かしている最中なので、いちばん効く。
+     しかも曲線が行き過ぎて戻る形なので、揺り戻しのぶんもレイアウトになる。
+     影と角だけを動かす。 */
+  transition:box-shadow .4s var(--ease), border-radius .4s var(--ease);
   -webkit-user-select:none;user-select:none;
 }
 .arena.pin{height:var(--arena-h-pin);box-shadow:0 12px 32px rgba(10,14,28,.34), inset 0 1px 0 rgba(255,255,255,.10)}
@@ -359,22 +367,9 @@ body{
     radial-gradient(1.2px 1.2px at 38% 21%, rgba(198,222,255,.75), transparent 60%),
     radial-gradient(1.8px 1.8px at 71% 13%, rgba(255,255,255,.8), transparent 60%),
     radial-gradient(1.3px 1.3px at 89% 33%, rgba(214,196,255,.7), transparent 60%),
-    radial-gradient(1.5px 1.5px at 25% 41%, rgba(255,255,255,.65), transparent 60%);
-}
-.arena .dust i:nth-child(2){
-  opacity:.38; animation-duration:64s; animation-delay:-11s;
-  background-image:
-    radial-gradient(1.1px 1.1px at 55% 6%,  rgba(255,255,255,.8), transparent 60%),
-    radial-gradient(1.4px 1.4px at 18% 28%, rgba(168,226,255,.7), transparent 60%),
-    radial-gradient(1px 1px   at 82% 44%,   rgba(255,255,255,.6), transparent 60%),
-    radial-gradient(1.3px 1.3px at 46% 37%, rgba(255,235,205,.6), transparent 60%);
-}
-.arena .dust i:nth-child(3){
-  opacity:.26; animation-duration:88s; animation-delay:-37s;
-  background-image:
-    radial-gradient(.9px .9px at 31% 15%, rgba(255,255,255,.7), transparent 60%),
-    radial-gradient(1.1px 1.1px at 67% 30%, rgba(214,196,255,.6), transparent 60%),
-    radial-gradient(.9px .9px at 93% 19%, rgba(255,255,255,.55), transparent 60%);
+    radial-gradient(1.5px 1.5px at 25% 41%, rgba(255,255,255,.65), transparent 60%),
+    radial-gradient(1.2px 1.2px at 55% 26%, rgba(168,226,255,.6), transparent 60%),
+    radial-gradient(1.1px 1.1px at 82% 47%, rgba(214,196,255,.6), transparent 60%);
 }
 @keyframes dustDrift{ from{transform:translate3d(0,0,0)} to{transform:translate3d(0,-50%,0)} }
 @media (prefers-reduced-motion:reduce){ .arena .dust i{animation:none} }
@@ -744,7 +739,7 @@ body{
     <source src="meteor.mp4" type="video/mp4">
     <source src="meteor.webm" type="video/webm">
   </video>
-  <div class="dust" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="dust" aria-hidden="true"><i></i></div>
   <div class="floor"></div>
   <div class="stage"><div class="mon" id="mon"><div class="monInner" id="monInner"></div></div></div>
   <div class="win"><div><b>撃破</b><small id="winSub"></small></div></div>
@@ -2469,10 +2464,23 @@ function renderArena(){
 }
 
 /* ---- アリーナを上に貼り付ける（スクロールしても狙いが見える） ---- */
+/* 貼り付いたかどうかを、見張り役（1pxの目印）が画面の上から出たかで決める。
+   スクロールのたびに getBoundingClientRect を2回呼んでいたので、
+   指を動かしているあいだ、毎フレーム レイアウトが走っていた。 */
+let pinIO = null;
 function updatePin(){
   const a=$("#arena"), s=$("#arenaTop");
   if(!a||!s) return;
-  a.classList.toggle("pin", a.getBoundingClientRect().top - s.getBoundingClientRect().top > 2);
+  if(!("IntersectionObserver" in window)){
+    a.classList.toggle("pin", a.getBoundingClientRect().top - s.getBoundingClientRect().top > 2);
+    return;
+  }
+  if(pinIO) pinIO.disconnect();
+  const top = parseFloat(getComputedStyle(a).top) || 0;
+  pinIO = new IntersectionObserver(
+    ([e]) => a.classList.toggle("pin", !e.isIntersecting),
+    { rootMargin: (-(Math.round(top) + 2)) + "px 0px 0px 0px", threshold: 0 });
+  pinIO.observe(s);
 }
 
 /* ---- モンスターを選ぶ ---- */
@@ -2992,7 +3000,8 @@ document.addEventListener("visibilitychange",()=>{
 /* ---- 3D 演出の起動 ---- */
 let showDone = ls(SHOW_KEY)==="1";   /* 既定は「消す」。消えるのは不具合ではなく、隕石になってヌシに当たる演出。残したい人は一覧の切り替えで「消さない」にできる */
 FX.init();
-addEventListener("scroll", updatePin, {passive:true});
+/* スクロールごとの呼び出しはやめた。貼り付きは IntersectionObserver が見る。
+   画面の大きさが変わると貼り付く位置も変わるので、そのときだけ作り直す。 */
 addEventListener("resize", updatePin, {passive:true});
 $("#btnMon").onclick=()=>{ renderMonPick(); $("#sheetMon").classList.add("on"); };
 
