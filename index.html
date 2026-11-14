@@ -72,6 +72,32 @@ button{background:none;border:0;cursor:pointer}
 .seg button small{display:block;font-size:11px;font-weight:700;opacity:.72;letter-spacing:.02em}
 .seg button i{display:block;font-style:normal;font-size:12.5px;font-weight:900;opacity:.9;letter-spacing:.1em;margin-top:3px}
 .task .nt .lk{color:var(--accent);text-decoration:underline;word-break:break-all}
+.task .nt .shot{
+  display:block;width:100%;height:auto;margin:8px 0 2px;
+  border-radius:12px;border:1px solid var(--line);
+  background:#fff;cursor:zoom-in;
+}
+.shotFull{position:fixed;inset:0;z-index:999;background:rgba(10,14,28,.92)}
+.shotFull .pane{
+  position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;
+  display:flex;align-items:center;justify-content:center;
+  padding:16px;
+  padding-top:calc(16px + env(safe-area-inset-top));
+  padding-bottom:calc(46px + env(safe-area-inset-bottom));
+}
+.shotFull img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;background:#fff;cursor:zoom-in}
+.shotFull.zoom .pane{display:block;padding:0}
+.shotFull.zoom img{max-width:none;max-height:none;width:auto;border-radius:0;cursor:zoom-out}
+.shotFull .hint{
+  position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom));
+  margin:0;text-align:center;color:rgba(255,255,255,.72);font-size:12px;font-weight:700;
+  pointer-events:none;
+}
+.shotFull .x{
+  position:absolute;top:calc(10px + env(safe-area-inset-top));right:14px;
+  width:40px;height:40px;border-radius:999px;border:0;
+  background:rgba(255,255,255,.16);color:#fff;font-size:22px;line-height:1;cursor:pointer;
+}
 .seg button[data-on="1"]{background:#FFF3E8;color:var(--accent)}
 .hero .date{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:.06em}
 .hero .msg{font-family:var(--display);font-size:20px;font-weight:900;margin-top:6px;line-height:1.35}
@@ -966,7 +992,7 @@ const DEFAULT_TASKS = [
    note:"5分・レッスン日。使うものを先に決める\n\n■ やり方\n① 今日使うフレーズを3つ決める\n② 講師に聞く質問を2つ決める\n\n■ コツ\n3つと2つ。増やさない\nフレーズは{{Ankiフレーズ}}から選ぶ\n質問は答えを用意しない。聞きたいことだけ決める\n\n■ 効果\n何を使うかが先に決まっているので、レッスン中に話題で迷わない\n使えたかどうかを、あとで確かめられる\n\n■ 素材\n{{Ankiフレーズ}}のカードと、その週に気になったこと"},
 
   {id:"eikaiwa", cat:"speaking", name:"英会話", core:false, dayType:"both",
-   note:""},
+   note:"![plan-a.webp]\nhttps://d27rnpuamwvieu.cloudfront.net/pdf/06J5Q3wpQXfxZDrbLPa70SAXX.pdf"},
 
   {id:"hissu", cat:"speaking", name:"必須単語", core:false, dayType:"both",
    note:""},
@@ -982,7 +1008,7 @@ const DEFAULT_TASKS = [
    上の一覧を直したときは、この数字を1つ増やすこと。
    （時刻で比べていたが、端末で★を付け直すなどすると、その時刻が
      判定の時刻を追い越して入れ替えが届かなくなるのでやめた） */
-const TASKS_REV = 38;
+const TASKS_REV = 39;
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
@@ -2471,6 +2497,29 @@ function updatePin(){
   pinIO.observe(s);
 }
 
+/* 控えの画像を全画面で開く。指で広げて読めるように、拡大を許す。 */
+function openShot(src){
+  const o=document.createElement("div");
+  o.className="shotFull"; o.tabIndex=-1;
+  o.innerHTML='<div class="pane"><img src="'+src.replace(/"/g,"&quot;")+'" alt=""></div>'
+            + '<button class="x" type="button" aria-label="閉じる">×</button>'
+            + '<p class="hint">押すと拡大。もう一度で戻る</p>';
+  const close=()=>{ o.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey=e=>{ if(e.key==="Escape") close(); };
+  /* ページ全体は maximum-scale=1 で指での拡大が効かないので、
+     ここだけ「収める」と「原寸」を切り替える。原寸のときは枠ごと動かして読む。 */
+  o.querySelector("img").addEventListener("click", e=>{
+    e.stopPropagation();
+    o.classList.toggle("zoom");
+    o.querySelector(".hint").hidden = o.classList.contains("zoom");
+  });
+  o.addEventListener("click", close);
+  o.querySelector(".x").addEventListener("click", e=>{ e.stopPropagation(); close(); });
+  document.addEventListener("keydown", onKey);
+  document.body.appendChild(o);
+  o.focus();
+}
+
 /* ---- モンスターを選ぶ ---- */
 function renderMonPick(){
   const el=$("#monGrid"); el.innerHTML="";
@@ -2500,7 +2549,7 @@ const MARK = {
   "音声付き多読":"reading",
   "Ankiフレーズ":"vocab", "NGSL":"vocab"
 };
-const MARK_RE = /\{\{([^{}\n]{1,40})\}\}|https?:\/\/[^\s"<>]+|→/g;
+const MARK_RE = /\{\{([^{}\n]{1,40})\}\}|!\[([^\]\n]{1,80})\]|https?:\/\/[^\s"<>]+|→/g;
 
 /* 1行ぶんを組む。{{語}} はマーカー、→ は弱めた矢印にする */
 function paintLine(el, line){
@@ -2511,6 +2560,14 @@ function paintLine(el, line){
     if(m[0] === "→"){
       const a=document.createElement("span"); a.className="ar"; a.textContent="→";
       el.appendChild(a);
+    }else if(m[2]){
+      /* m はループを抜けると null になる。押したときに読むと落ちるので、
+         ここで値を控えてから渡す。 */
+      const src=m[2];
+      const im=document.createElement("img");
+      im.className="shot"; im.src=src; im.alt=""; im.loading="lazy"; im.decoding="async";
+      im.addEventListener("click", e=>{ e.stopPropagation(); openShot(src); });
+      el.appendChild(im);
     }else if(m[0].startsWith("http")){
       const a=document.createElement("a");
       a.className="lk"; a.href=m[0]; a.target="_blank"; a.rel="noopener noreferrer";
