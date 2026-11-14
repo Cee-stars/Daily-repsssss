@@ -982,11 +982,11 @@ const DEFAULT_TASKS = [
   {id:"lmshadow", cat:"listening", name:"リスニングモード予測のシャドーイング", core:false, dayType:"both",
    note:""},
 
-  {id:"ankiph", cat:"vocab", name:"Ankiフレーズ", core:true, dayType:"both",
-   note:"10分・毎日。日本語を見て2秒で言う\n\n■ やり方\n① 日本語を見る\n② 2秒以内に英語を声に出す\n③ 出てこなければ次へ。止まらない\n\n■ コツ\n新規は1日4〜5枚\n最大150枚まで。それ以上には増やさない\n必ず声に出す。頭の中で言えても通過にしない\n\n■ 効果\n日本語→英語の向きで、2秒で出る形が増える\n{{レッスン}}で指摘された分が、ここに溜まる\n\n■ 素材\n{{レッスン}}で言えなかった表現"},
+  {id:"keepgo", cat:"vocab", name:"KeepGoing", core:false, dayType:"both",
+   note:""},
 
   {id:"ngsl", cat:"vocab", name:"NGSL", core:false, dayType:"both",
-   note:"10分・毎日。頻出語を順番どおりに\n\n■ やり方\n① 新規の語を回す。表は英単語＋音声、裏は日本語\n② 話し言葉版の NGSL-S（約720語）に ngsl-s タグを付けて、そこから先に回す\n③ 10分たったら、終わっていなくても止める。残りは明日\n④ 復習が多い日は、新規を0にして復習だけ回す\n\n■ コツ\n表には必ず音声を付ける。読める語と、音で分かる語は別物\nHard はほぼ使わない。迷ったら Good\n{{Ankiフレーズ}}とは別のデッキにする。あちらはフレーズ、ここは単語\n\n■ 効果\n話し言葉で使われる語から順に埋まる\n音から意味が出る語が増えるので、{{リスニングモード予測}}で止まる回数が減る\n\n■ 素材\nNGSL（newgeneralservicelist.com）。順番は自分で決めずリストの通りに\n次に足す語はすでに決めてある分を使う"},
+   note:"10分・毎日。頻出語を順番どおりに\n\n■ やり方\n① 新規の語を回す。表は英単語＋音声、裏は日本語\n② 話し言葉版の NGSL-S（約720語）に ngsl-s タグを付けて、そこから先に回す\n③ 10分たったら、終わっていなくても止める。残りは明日\n④ 復習が多い日は、新規を0にして復習だけ回す\n\n■ コツ\n表には必ず音声を付ける。読める語と、音で分かる語は別物\nHard はほぼ使わない。迷ったら Good\n\n■ 効果\n話し言葉で使われる語から順に埋まる\n音から意味が出る語が増えるので、{{リスニングモード予測}}で止まる回数が減る\n\n■ 素材\nNGSL（newgeneralservicelist.com）。順番は自分で決めずリストの通りに\n次に足す語はすでに決めてある分を使う"},
 
   {id:"tobook", cat:"reading", name:"知らない単語は洋書へ", core:false, dayType:"off",
    note:"レッスンなし日。17時に洋書を作る\n\n① 知らない単語などに出会ったら、メモしていく\n② 17時には洋書を作る"},
@@ -995,7 +995,7 @@ const DEFAULT_TASKS = [
    note:"25分・レッスン日\n\n■ やり方\n① 答えたら質問を返す\n② 分からなければ聞き返す\n③ 決めたフレーズを3つ使う\n④ 直してほしいときは、講師にこう頼む\n　 「Please give me a hint and let me fix it myself.」\n\n■ コツ\n答えて終わりにしない。質問を返すまでが1往復\n聞き返すのは後退ではない。使えている証拠\n答えをもらうのではなく、ヒントをもらって自分で直す\n\n■ 効果\n部品（フレーズ・聞き返し・質問）を、人が相手の場で組み立てられる\n自分で直した経験が残るので、同じ間違いが減る\n\n■ 素材\n{{レッスン準備}}で決めたフレーズ3つと質問2つ"},
 
   {id:"prep5", cat:"speaking", name:"レッスン準備", core:false, dayType:"lesson",
-   note:"5分・レッスン日。使うものを先に決める\n\n■ やり方\n① 今日使うフレーズを3つ決める\n② 講師に聞く質問を2つ決める\n\n■ コツ\n3つと2つ。増やさない\nフレーズは{{Ankiフレーズ}}から選ぶ\n質問は答えを用意しない。聞きたいことだけ決める\n\n■ 効果\n何を使うかが先に決まっているので、レッスン中に話題で迷わない\n使えたかどうかを、あとで確かめられる\n\n■ 素材\n{{Ankiフレーズ}}のカードと、その週に気になったこと"},
+   note:"5分・レッスン日。使うものを先に決める\n\n■ やり方\n① 今日使うフレーズを3つ決める\n② 講師に聞く質問を2つ決める\n\n■ コツ\n3つと2つ。増やさない\n質問は答えを用意しない。聞きたいことだけ決める\n\n■ 効果\n何を使うかが先に決まっているので、レッスン中に話題で迷わない\n使えたかどうかを、あとで確かめられる\n\n■ 素材\nその週に気になったこと"},
 
   {id:"eikaiwa", cat:"speaking", name:"英会話", core:false, dayType:"both",
    note:"![plan-a.webp]\nhttps://d27rnpuamwvieu.cloudfront.net/pdf/06J5Q3wpQXfxZDrbLPa70SAXX.pdf"},
@@ -1004,7 +1004,7 @@ const DEFAULT_TASKS = [
    note:"素材　５７０"},
 
   {id:"toanki", cat:"vocab", name:"言えなかった表現をAnkiへ追加", core:true, dayType:"lesson",
-   note:"5分・レッスン日。その日のうちに入れる\n\n■ やり方\n① レッスンで言えなかった表現を拾う\n② {{Ankiフレーズ}}のカードにする（表は日本語、裏は英語）\n③ その日のうちに入れる\n\n■ コツ\n全部拾わない。3つまで\n講師が言い直した言い方を使う。自分で作文しない\n翌日に回さない。思い出せなくなる\n\n■ 効果\n言えなかったものが、翌日から2秒で言う対象になる\nカードが自分の失敗から作られるので、使う場面が決まっている\n\n■ 素材\nその日の{{レッスン}}。録画があれば見返す"}
+   note:"5分・レッスン日。その日のうちに入れる\n\n■ やり方\n① レッスンで言えなかった表現を拾う\n② カードにする（表は日本語、裏は英語）\n③ その日のうちに入れる\n\n■ コツ\n全部拾わない。3つまで\n講師が言い直した言い方を使う。自分で作文しない\n翌日に回さない。思い出せなくなる\n\n■ 効果\n言えなかったものが、翌日から2秒で言う対象になる\nカードが自分の失敗から作られるので、使う場面が決まっている\n\n■ 素材\nその日の{{レッスン}}。録画があれば見返す"}
 ];
 
 /* 配る一覧の版。記録が持っている版がこれより古ければ、タスクだけを
@@ -1014,7 +1014,7 @@ const DEFAULT_TASKS = [
    上の一覧を直したときは、この数字を1つ増やすこと。
    （時刻で比べていたが、端末で★を付け直すなどすると、その時刻が
      判定の時刻を追い越して入れ替えが届かなくなるのでやめた） */
-const TASKS_REV = 42;
+const TASKS_REV = 43;
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
@@ -1695,9 +1695,9 @@ function toggle(id, src){
 /* ---- その日の様子を見て出す一言 ----
    外の AI は呼ばない。通信もアカウントも要らないので、圏外でも必ず出る。
    見ているのは：やった数、何を残しているか、時刻、過ぎた日か、連続日数。 */
-const MINUTES = {extread:20, undsh:15, ankiph:10, ngsl:10, prep5:5, lesson25:25, toanki:5};
+const MINUTES = {extread:20, undsh:15, ngsl:10, prep5:5, lesson25:25, toanki:5};
 /* 残りの重さ順。先に手を付けてほしいものを上に置く */
-const ORDER = ["ankiph","lesson25","prep5","eikaiwa","hissu","toanki","ngsl","tobook","undsh","lmshadow","ybook","extread"];
+const ORDER = ["lesson25","prep5","eikaiwa","hissu","toanki","ngsl","tobook","undsh","lmshadow","ybook","extread"];
 
 function nameOf(id){
   const t = state.tasks.find(x=>x.id===id);
@@ -1741,7 +1741,7 @@ function coachFor(dayIso, tasks, done){
       {head:"今日のぶん、全部終わりました。", body:"ここで止めるのが正解です。明日も開けるのは、今日やりすぎなかった人だけです。"},
       {head:"全部やりきりました。", body:"読んだ本は明日も同じシリーズのままで。本を替えると、せっかく出会った語にもう一度会えません。"},
       {head:"今日のぶん、完了です。", body:"読んだ語数を書き忘れていませんか。数字が残らないと、伸びたことに気づけません。"},
-      {head:"全部終わりました。", body:"今日言えなかった表現を1つ、Ankiフレーズに足しておくと明日が楽です。"}
+      {head:"全部終わりました。", body:"今日言えなかった表現を1つ、Anki に足しておくと明日が楽です。"}
     ];
     const w = pick(wins, dayIso);
     if(st >= 7)  return {tone:"win", head:st+"日つづいています。", body:"ここまで来たら、崩すのは1日休むことだけです。明日も5分でいいので開いてください。"};
@@ -1752,13 +1752,13 @@ function coachFor(dayIso, tasks, done){
   /* --- ひとつも手をつけていない --- */
   if(dn === 0){
     if(hour < 10) return {tone:"push", head:"まだ 0 です。",
-      body:"Ankiフレーズは10分です。そこだけ押して、残りは夜でも間に合います。"};
+      body:"NGSL は10分です。そこだけ押して、残りは夜でも間に合います。"};
     if(hour < 18) return {tone:"push", head:"まだ 0 / "+all+" です。",
       body:"全部やると"+mins+"分。無理なら、"+nameOf(ORDER.find(id=>left.includes(id))||left[0])+"だけでも先に片づけてください。"};
     if(hour < 22) return {tone:"burn", head:"今日、まだ1つも触っていません。",
       body:"あと"+(24-hour)+"時間で、今日のぶんは全部燃えます。見ているだけでは1語も増えません。"};
     return {tone:"burn", head:"0 / "+all+" のまま日付が変わります。",
-      body:"いまから Ankiフレーズの10分だけ。0 と 1 は、明日の自分にとって別物です。"};
+      body:"いまから NGSL の10分だけ。0 と 1 は、明日の自分にとって別物です。"};
   }
 
   /* --- 途中 --- */
@@ -2553,7 +2553,7 @@ const MARK = {
   "レッスン":"speaking", "レッスン準備":"speaking",
   "リスニングモード予測":"listening",
   "音声付き多読":"reading",
-  "Ankiフレーズ":"vocab", "NGSL":"vocab"
+  "NGSL":"vocab"
 };
 const MARK_RE = /\{\{([^{}\n]{1,40})\}\}|!\[([^\]\n]{1,80})\]|https?:\/\/[^\s"<>]+|→/g;
 
