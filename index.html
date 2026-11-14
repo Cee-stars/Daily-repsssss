@@ -953,35 +953,23 @@ const DEFAULT_TASKS = [
   {id:"ankiph", cat:"vocab", name:"Ankiフレーズ", core:true, dayType:"both",
    note:"10分・毎日。日本語を見て2秒で言う\n\n■ やり方\n① 日本語を見る\n② 2秒以内に英語を声に出す\n③ 出てこなければ次へ。止まらない\n\n■ コツ\n新規は1日4〜5枚\n最大150枚まで。それ以上には増やさない\n必ず声に出す。頭の中で言えても通過にしない\n\n■ 効果\n日本語→英語の向きで、2秒で出る形が増える\n{{レッスン}}で指摘された分が、ここに溜まる\n\n■ 素材\n{{レッスン}}で言えなかった表現"},
 
-  {id:"t432", cat:"speaking", name:"4/3/2", core:true, dayType:"lesson",
-   note:"10分・レッスン日。同じ話を3回\n\n■ やり方\n① 使うフレーズを3つ決める\n② 4分・3分・2分で録音する\n③ 新しい質問1つに、60秒で即答する\n\n■ コツ\n同じテーマは1週間以内に繰り返す\n②は同じ内容を削りながら話す。新しい内容を足さない\n①の3つを使えたかだけ見る。上手さでは見ない\n\n■ 効果\n同じ話を削りながら速くするので、流暢さの側が伸びる\n③で、準備していない質問への即答が入る\n\n■ 素材\nテーマは自分で決める。1週間は替えない\nフレーズは{{Ankiフレーズ}}から3つ選ぶ"},
-
   {id:"ngsl", cat:"vocab", name:"NGSL", core:false, dayType:"both",
    note:"10分・毎日。頻出語を順番どおりに\n\n■ やり方\n① 新規の語を回す。表は英単語＋音声、裏は日本語\n② 話し言葉版の NGSL-S（約720語）に ngsl-s タグを付けて、そこから先に回す\n③ 10分たったら、終わっていなくても止める。残りは明日\n④ 復習が多い日は、新規を0にして復習だけ回す\n\n■ コツ\n表には必ず音声を付ける。読める語と、音で分かる語は別物\nHard はほぼ使わない。迷ったら Good\n{{Ankiフレーズ}}とは別のデッキにする。あちらはフレーズ、ここは単語\n\n■ 効果\n話し言葉で使われる語から順に埋まる\n音から意味が出る語が増えるので、{{理解シャドーイング}}で止まる回数が減る\n\n■ 素材\nNGSL（newgeneralservicelist.com）。順番は自分で決めずリストの通りに\n次に足す語はすでに決めてある分を使う"},
-
-  {id:"shun", cat:"speaking", name:"瞬間英作文", core:false, dayType:"both",
-   note:"10分・毎日。日本語を見て英語に組み立てる\n\n■ やり方\n① 課題の日本語を見る\n② 止まらずに英語を声に出す\n③ 答えと比べる。違っていたら、違いを1つだけ言い直す\n\n■ コツ\n必ず声に出す。頭の中で言えても通過にしない\n答えと一字一句同じでなくてよい。意味が通れば通過\n詰まった課題に印を付けて、翌日その印から始める\n\n■ 効果\n日本語→英語の向きで、文を組み立てる回路が動いたままになる\n{{レッスン}}で詰まる前の、文単位の土台になる\n\n■ 素材\n手持ちの瞬間英作文の教材。文型の順に並んでいるものを1冊決めて続ける"},
-
-  {id:"scene", cat:"speaking", name:"瞬間英作文 場面モード", core:false, dayType:"both",
-   note:"10分・毎日。場面を決めて、その中で組み立てる\n\n■ やり方\n① 今週の場面を1つ決める（店・駅・道・初対面など）\n② その場面で相手が言いそうなことに、日本語を見ずに返す\n③ 自分から始める一言も、同じ場面で言う\n④ 言えなかった返しを1つ書き出す\n\n■ コツ\n場面は3〜5個に固定して、数週間は替えない。毎回替えると1つの場面に1回しか当たらない\n台本どおりに言えることを目標にしない。相手の言い方が変わっても返せるかを見る\n④の1つは{{Ankiフレーズ}}へ入れる\n\n■ 効果\n文単位の{{瞬間英作文}}と、人が相手の{{レッスン}}の間を埋める\n場面ごとに「最初の一言」が決まるので、自分から始められる\n\n■ 素材\n場面は自分が実際に行く場所から選ぶ。作らない\n2秒ドリルのアプリの会話デッキを使ってもよい"},
-
-  {id:"atsuw", cat:"speaking", name:"Atsu 単語10", core:false, dayType:"both",
-   note:"30分・毎日"},
-
-  {id:"atsus", cat:"speaking", name:"Atsu 構文5", core:false, dayType:"both",
-   note:"30分・毎日"},
-
-  {id:"atsuc", cat:"speaking", name:"Atsu 英会話", core:false, dayType:"lesson",
-   note:"レッスン日。Atsu のやり方で\n\n教材（PDF）\nhttps://utagesystem.s3.ap-northeast-1.amazonaws.com/fY5AFNzr1dzY/qTjQyqtKeUDbTvXxSgzUtE3QoWTgKd8n9tksfT6O.pdf"},
 
   {id:"tobook", cat:"reading", name:"知らない単語は洋書へ", core:false, dayType:"off",
    note:"レッスンなし日。17時に洋書を作る\n\n① 知らない単語などに出会ったら、メモしていく\n② 17時には洋書を作る"},
 
+  {id:"lesson25", cat:"speaking", name:"レッスン", core:true, dayType:"lesson",
+   note:"25分・レッスン日\n\n■ やり方\n① 答えたら質問を返す\n② 分からなければ聞き返す\n③ 決めたフレーズを3つ使う\n④ 直してほしいときは、講師にこう頼む\n　 「Please give me a hint and let me fix it myself.」\n\n■ コツ\n答えて終わりにしない。質問を返すまでが1往復\n聞き返すのは後退ではない。使えている証拠\n答えをもらうのではなく、ヒントをもらって自分で直す\n\n■ 効果\n部品（フレーズ・聞き返し・質問）を、人が相手の場で組み立てられる\n自分で直した経験が残るので、同じ間違いが減る\n\n■ 素材\n{{レッスン準備}}で決めたフレーズ3つと質問2つ"},
+
   {id:"prep5", cat:"speaking", name:"レッスン準備", core:false, dayType:"lesson",
    note:"5分・レッスン日。使うものを先に決める\n\n■ やり方\n① 今日使うフレーズを3つ決める\n② 講師に聞く質問を2つ決める\n\n■ コツ\n3つと2つ。増やさない\nフレーズは{{Ankiフレーズ}}から選ぶ\n質問は答えを用意しない。聞きたいことだけ決める\n\n■ 効果\n何を使うかが先に決まっているので、レッスン中に話題で迷わない\n使えたかどうかを、あとで確かめられる\n\n■ 素材\n{{Ankiフレーズ}}のカードと、その週に気になったこと"},
 
-  {id:"lesson25", cat:"speaking", name:"レッスン", core:true, dayType:"lesson",
-   note:"25分・レッスン日\n\n■ やり方\n① 答えたら質問を返す\n② 分からなければ聞き返す\n③ 決めたフレーズを3つ使う\n④ 直してほしいときは、講師にこう頼む\n　 「Please give me a hint and let me fix it myself.」\n\n■ コツ\n答えて終わりにしない。質問を返すまでが1往復\n聞き返すのは後退ではない。使えている証拠\n答えをもらうのではなく、ヒントをもらって自分で直す\n\n■ 効果\n部品（フレーズ・聞き返し・質問）を、人が相手の場で組み立てられる\n自分で直した経験が残るので、同じ間違いが減る\n\n■ 素材\n{{レッスン準備}}で決めたフレーズ3つと質問2つ"},
+  {id:"eikaiwa", cat:"speaking", name:"英会話", core:false, dayType:"both",
+   note:""},
+
+  {id:"hissu", cat:"speaking", name:"必須単語", core:false, dayType:"both",
+   note:""},
 
   {id:"toanki", cat:"vocab", name:"言えなかった表現をAnkiへ追加", core:true, dayType:"lesson",
    note:"5分・レッスン日。その日のうちに入れる\n\n■ やり方\n① レッスンで言えなかった表現を拾う\n② {{Ankiフレーズ}}のカードにする（表は日本語、裏は英語）\n③ その日のうちに入れる\n\n■ コツ\n全部拾わない。3つまで\n講師が言い直した言い方を使う。自分で作文しない\n翌日に回さない。思い出せなくなる\n\n■ 効果\n言えなかったものが、翌日から2秒で言う対象になる\nカードが自分の失敗から作られるので、使う場面が決まっている\n\n■ 素材\nその日の{{レッスン}}。録画があれば見返す"}
@@ -994,7 +982,7 @@ const DEFAULT_TASKS = [
    上の一覧を直したときは、この数字を1つ増やすこと。
    （時刻で比べていたが、端末で★を付け直すなどすると、その時刻が
      判定の時刻を追い越して入れ替えが届かなくなるのでやめた） */
-const TASKS_REV = 37;
+const TASKS_REV = 38;
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
@@ -1675,9 +1663,9 @@ function toggle(id, src){
 /* ---- その日の様子を見て出す一言 ----
    外の AI は呼ばない。通信もアカウントも要らないので、圏外でも必ず出る。
    見ているのは：やった数、何を残しているか、時刻、過ぎた日か、連続日数。 */
-const MINUTES = {extread:20, undsh:15, ankiph:10, ngsl:10, shun:10, scene:10, t432:10, atsuw:30, atsus:30, prep5:5, lesson25:25, toanki:5};
+const MINUTES = {extread:20, undsh:15, ankiph:10, ngsl:10, prep5:5, lesson25:25, toanki:5};
 /* 残りの重さ順。先に手を付けてほしいものを上に置く */
-const ORDER = ["ankiph","prep5","lesson25","toanki","ngsl","atsuw","atsus","atsuc","shun","scene","t432","tobook","undsh","extread"];
+const ORDER = ["ankiph","lesson25","prep5","eikaiwa","hissu","toanki","ngsl","tobook","undsh","extread"];
 
 function nameOf(id){
   const t = state.tasks.find(x=>x.id===id);
@@ -2507,10 +2495,8 @@ function renderMonPick(){
    innerHTML には絶対に入れない。テキストと、自分で作った span だけで組む。
    【】や == は日本語の文章に普通に出るので、誤爆しない {{ }} を記法にした。 */
 const MARK = {
-  "4/3/2":"speaking",
   "レッスン":"speaking", "レッスン準備":"speaking",
   "理解シャドーイング":"listening",
-  "瞬間英作文":"speaking", "瞬間英作文 場面モード":"speaking",
   "音声付き多読":"reading",
   "Ankiフレーズ":"vocab", "NGSL":"vocab"
 };
