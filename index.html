@@ -779,7 +779,7 @@ body::before{
 <div class="sentinel" id="arenaTop"></div>
 <section class="arena" id="arena">
   <div class="dust" aria-hidden="true"><i></i></div>
-  <p class="greet"><span class="g1">Hey,</span><span class="g2" id="greetName"></span></p>
+  <p class="greet"><span class="g1">Hey,</span><span class="g2">YUITO</span></p>
 </section>
 
 <!-- グラデーションの下に出す帯。用意だけで、まだ出していない。
@@ -1822,8 +1822,6 @@ function render(){
   const wd="日月火水木金土"[dt.getDay()];
   $("#dateLine").textContent =
     (sel===today()?"TODAY · ":"") + (dt.getMonth()+1)+"月"+dt.getDate()+"日（"+wd+"）";
-  const gn=$("#greetName");
-  if(gn) gn.textContent = (dt.getMonth()+1)+"月"+dt.getDate()+"日";
   $("#msg").textContent =
     state.tasks.length===0 ? "タスクを追加しよう" :
     tasks.length===0 ? "この日タイプに出すタスクはありません" :
