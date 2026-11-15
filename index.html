@@ -28,6 +28,7 @@
   --c-writing:#00A56E;
   --c-reading:#F0357E;
 
+  --serif:"Hiragino Mincho ProN","Yu Mincho",Georgia,"Times New Roman",serif;
   --display:ui-rounded,"SF Pro Rounded","Hiragino Maru Gothic ProN","Hiragino Sans",system-ui,sans-serif;
   --ui:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
   --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -46,11 +47,14 @@ button{background:none;border:0;cursor:pointer}
 :focus-visible{outline:3px solid var(--c-listening);outline-offset:2px}
 
 /* ---- ヘッダー ---- */
-.top{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin-bottom:14px}
+.top .spacer{display:none}
+.top .sync{grid-column:1;justify-self:start}
+.top .streak{grid-column:3;justify-self:end}
 /* 幅の狭い端末でも1行に収める。タイトルだけが縮む */
 .top h1{
-  margin:0;font-family:var(--display);font-weight:900;letter-spacing:.05em;
-  font-size:clamp(17px,5.4vw,23px);white-space:nowrap;min-width:0;flex:0 1 auto;
+  grid-column:2;margin:0;font-family:var(--serif);font-weight:700;letter-spacing:.01em;
+  font-size:clamp(19px,5.6vw,25px);white-space:nowrap;text-align:center;
 }
 .spacer{flex:1 1 auto;min-width:0}
 .streak{
@@ -330,24 +334,18 @@ body::before{
 /* ---- アリーナ ---- */
 .sentinel{height:1px;margin:-1px 0 0}
 .arena{
+  /* 写真に合わせた夕景のグラデーション。上から すみれ → 青 → 桃 → 橙 → 朱。 */
   position:sticky;top:calc(var(--safe-t) + 6px);z-index:12;
-  height:var(--arena-h);margin-bottom:14px;
-  border-radius:28px;overflow:hidden;isolation:isolate;
-  background:linear-gradient(168deg,#1C2238 0%,#0A0D18 52%,#161C31 100%);
-  border:1px solid rgba(255,255,255,.09);
-  box-shadow:
-    0 22px 54px rgba(10,14,28,.30),
-    0 3px 10px rgba(10,14,28,.18),
-    inset 0 1px 0 rgba(255,255,255,.12);
-  perspective:720px;perspective-origin:50% 44%;
-  /* 高さは動かさない。貼り付く瞬間に 250px から 104px へ .55s かけて変えると、
-     その間ずっとレイアウトが走る。指を動かしている最中なので、いちばん効く。
-     しかも曲線が行き過ぎて戻る形なので、揺り戻しのぶんもレイアウトになる。
-     影と角だけを動かす。 */
-  transition:box-shadow .4s var(--ease), border-radius .4s var(--ease);
+  height:var(--arena-h);margin:0 -12px 14px;  /* body の左右余白 12px を打ち消して全幅にする */
+  overflow:hidden;isolation:isolate;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,
+    #8E8FD6 0%, #7E96DC 14%, #6E9BD6 28%,
+    #A98CC8 44%, #E97BA3 62%, #F2944F 82%, #ED5E3C 100%);
   -webkit-user-select:none;user-select:none;
+  transition:box-shadow .4s var(--ease);
 }
-.arena.pin{height:var(--arena-h-pin);box-shadow:0 12px 32px rgba(10,14,28,.34), inset 0 1px 0 rgba(255,255,255,.10)}
+.arena.pin{height:var(--arena-h-pin);box-shadow:0 10px 26px rgba(40,20,60,.22)}
 
 /* 空：オーロラ＋星 */
 .arena .sky{
@@ -399,6 +397,27 @@ body::before{
 }
 @keyframes dustDrift{ from{transform:translate3d(0,0,0)} to{transform:translate3d(0,-50%,0)} }
 @media (prefers-reduced-motion:reduce){ .arena .dust i{animation:none} }
+
+.arena .greet{
+  margin:0;position:relative;z-index:2;text-align:center;color:#fff;
+  font-family:var(--serif);line-height:1.1;
+  text-shadow:0 1px 10px rgba(60,30,80,.22);
+}
+.arena .greet .g1{font-weight:400;font-size:clamp(30px,9.2vw,44px);letter-spacing:.01em}
+.arena .greet .g2{font-style:italic;font-weight:400;font-size:clamp(30px,9.2vw,44px);margin-left:.28em}
+
+/* グラデーションの下に出す帯。用意だけで、まだ出していない。 */
+.pills{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 16px}
+.pill{
+  border:1.5px solid currentColor;border-radius:999px;
+  padding:9px 16px;font-size:14px;font-weight:800;font-family:var(--serif);
+  background:#fff;cursor:pointer;white-space:nowrap;
+}
+.pill[data-tone="1"]{color:#C4500A;background:#FDE8D3}
+.pill[data-tone="2"]{color:#1F6F4E;background:#DCF0E3}
+.pill[data-tone="3"]{color:#2B4BAF;background:#DCE4FA}
+.pill[data-tone="4"]{color:#9B2B6B;background:#FBDCEC}
+.pill[data-tone="5"]{color:#1C6E86;background:#D7EEF4}
 
 .arena .skyFilm{
   position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
@@ -758,28 +777,19 @@ body::before{
 </div>
 
 <div class="sentinel" id="arenaTop"></div>
-<section class="arena" id="arena" data-state="live">
-  <div class="sky"></div>
-  <video class="skyFilm" id="skyFilm" muted playsinline preload="auto"
-         disablepictureinpicture aria-hidden="true">
-    <source src="meteor.mp4" type="video/mp4">
-    <source src="meteor.webm" type="video/webm">
-  </video>
+<section class="arena" id="arena">
   <div class="dust" aria-hidden="true"><i></i></div>
-  <div class="floor"></div>
-  <div class="stage"><div class="mon" id="mon"><div class="monInner" id="monInner"></div></div></div>
-  <div class="win"><div><b>撃破</b><small id="winSub"></small></div></div>
-  <div class="scrim"></div>
-  <div class="hud">
-    <div class="hpTop">
-      <span class="mname" id="monName"></span>
-      <span class="mtag" id="monTag"></span>
-      <span class="hpN" id="hpN"></span>
-    </div>
-    <div class="hp" id="hp"></div>
-  </div>
-  <button class="monPick" id="btnMon" aria-label="モンスターを選ぶ">⇄</button>
+  <p class="greet"><span class="g1">Hey,</span><span class="g2" id="greetName"></span></p>
 </section>
+
+<!-- グラデーションの下に出す帯。用意だけで、まだ出していない。
+     使うときは、この中身を複製して #pillsSlot に入れる。 -->
+<template id="pillsTpl">
+  <div class="pills">
+    <button class="pill" type="button" data-tone="1"></button>
+  </div>
+</template>
+<div id="pillsSlot"></div>
 
 <section class="hero">
   <div class="seg" id="daySeg">
@@ -924,7 +934,7 @@ body::before{
   <button class="ghost" data-close="1">閉じる</button>
 </div></div>
 
-<div class="sheet" id="sheetMon"><div class="inner">
+<div class="sheet" id="sheetMon" hidden><div class="inner">
   <h3>モンスターを選ぶ</h3>
   <div class="sub">タスクを1つ終えるたび、そのカードがその場で握りつぶされて岩の玉になり、隕石として飛んでいってこいつに当たります。その日のぶんを全部終えると倒せます。
 選んだモンスターはこの端末だけの見せ方です。記録には入りません。</div>
@@ -1812,6 +1822,8 @@ function render(){
   const wd="日月火水木金土"[dt.getDay()];
   $("#dateLine").textContent =
     (sel===today()?"TODAY · ":"") + (dt.getMonth()+1)+"月"+dt.getDate()+"日（"+wd+"）";
+  const gn=$("#greetName");
+  if(gn) gn.textContent = (dt.getMonth()+1)+"月"+dt.getDate()+"日";
   $("#msg").textContent =
     state.tasks.length===0 ? "タスクを追加しよう" :
     tasks.length===0 ? "この日タイプに出すタスクはありません" :
@@ -2456,6 +2468,9 @@ function fxBurnAway(done){
 /* ---- アリーナを描く ---- */
 function renderArena(){
   const ar=$("#arena"); if(!ar) return;
+  /* 恐竜をやめたので、HP の部品が無い。以降はすべて恐竜のための処理なので、
+     ここで引き返す。呼び出し側は方々にあるが、どれも何もしなくてよい。 */
+  if(!$("#hp")) return;
   const tasks=visibleTasks(), done=doneOf(sel);
   const total=tasks.length;
   const dn=tasks.filter(t=>done.includes(t.id)).length;
@@ -3052,7 +3067,6 @@ FX.init();
 /* スクロールごとの呼び出しはやめた。貼り付きは IntersectionObserver が見る。
    画面の大きさが変わると貼り付く位置も変わるので、そのときだけ作り直す。 */
 addEventListener("resize", updatePin, {passive:true});
-$("#btnMon").onclick=()=>{ renderMonPick(); $("#sheetMon").classList.add("on"); };
 
 /* 燃え具合は時間で変わる。変わったときだけ描き直す */
 setInterval(()=>{
