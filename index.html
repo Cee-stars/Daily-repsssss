@@ -22,13 +22,17 @@
   --dim:#6E7789;
   --line:#E4E8F1;
   --accent:#FF7A18;
+  --accent-soft:#FFF3E8;   /* 195 行で使っているのに定義が無かった */
 
   --c-listening:#00A9E0;
   --c-speaking:#FF7A18;
   --c-writing:#00A56E;
   --c-reading:#F0357E;
 
-  --serif:"Hiragino Mincho ProN","Yu Mincho",Georgia,"Times New Roman",serif;
+  /* 字ごとに選ばれるので、ラテン用を先に置かないと "Hey, YUITO" まで明朝の
+     和文用ラテンで描かれる。Didot は iOS 標準の Didone。"Yu Mincho" は iOS に無い。 */
+  --serif-lat:Didot,"Hoefler Text",Baskerville,Georgia,"Times New Roman";
+  --serif:var(--serif-lat),"Hiragino Mincho ProN",serif;
   --display:ui-rounded,"SF Pro Rounded","Hiragino Maru Gothic ProN","Hiragino Sans",system-ui,sans-serif;
   --ui:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
   --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -47,14 +51,18 @@ button{background:none;border:0;cursor:pointer}
 :focus-visible{outline:3px solid var(--c-listening);outline-offset:2px}
 
 /* ---- ヘッダー ---- */
-.top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin-bottom:14px}
+/* 3つを同じマスに重ねる。1fr auto 1fr だと連続日数が3桁になった日に題が左へずれる */
+.top{display:grid;grid-template-columns:1fr;align-items:center;margin-bottom:14px}
+.top > *{grid-area:1/1}
 .top .spacer{display:none}
-.top .sync{grid-column:1;justify-self:start}
-.top .streak{grid-column:3;justify-self:end}
+.top h1{justify-self:center}
+.top .sync{justify-self:start}
+.top .streak{justify-self:end}
 /* 幅の狭い端末でも1行に収める。タイトルだけが縮む */
 .top h1{
-  grid-column:2;margin:0;font-family:var(--serif);font-weight:700;letter-spacing:.01em;
-  font-size:clamp(19px,5.6vw,25px);white-space:nowrap;text-align:center;
+  margin:0;font-family:var(--serif);font-weight:400;
+  letter-spacing:.14em;margin-right:-.14em;
+  font-size:clamp(16px,4.4vw,20px);white-space:nowrap;text-align:center;
 }
 .spacer{flex:1 1 auto;min-width:0}
 .streak{
@@ -313,7 +321,7 @@ body[data-hinted="1"] .task .more{display:none}
   --spring:cubic-bezier(.22,1.3,.36,1);
   --ease:cubic-bezier(.4,0,.2,1);
   --glass:rgba(255,255,255,.72);
-  --arena-h:250px;
+  --arena-h:clamp(190px, 30svh, 260px);  /* 写真は画面の 1/4〜1/3。固定 250px は SE で 37.5% になり重い */
   --arena-h-pin:104px;
 }
 
@@ -335,8 +343,8 @@ body::before{
 .sentinel{height:1px;margin:-1px 0 0}
 .arena{
   /* 写真に合わせた夕景のグラデーション。上から すみれ → 青 → 桃 → 橙 → 朱。 */
-  position:sticky;top:calc(var(--safe-t) + 6px);z-index:12;
-  height:var(--arena-h);margin:0 -12px 14px;  /* body の左右余白 12px を打ち消して全幅にする */
+  position:static;z-index:0;
+  height:var(--arena-h);margin:0 calc(50% - 50vw) 14px;  /* 画面幅が 640px を超えても端まで届く */
   overflow:hidden;isolation:isolate;
   display:flex;align-items:center;justify-content:center;
   background:linear-gradient(180deg,
@@ -345,7 +353,8 @@ body::before{
   -webkit-user-select:none;user-select:none;
   transition:box-shadow .4s var(--ease);
 }
-.arena.pin{height:var(--arena-h-pin);box-shadow:0 10px 26px rgba(40,20,60,.22)}
+/* 観察する JS はそのまま動くので、.pin が付いても高さが跳ねないようにしておく */
+.arena.pin{height:var(--arena-h);box-shadow:none}
 
 /* 空：オーロラ＋星 */
 .arena .sky{
@@ -399,12 +408,14 @@ body::before{
 @media (prefers-reduced-motion:reduce){ .arena .dust i{animation:none} }
 
 .arena .greet{
-  margin:0;position:relative;z-index:2;text-align:center;color:#fff;
+  margin:0;text-align:center;color:#fff;padding-inline:20px;
   font-family:var(--serif);line-height:1.1;
-  text-shadow:0 1px 10px rgba(60,30,80,.22);
+  font-size:clamp(34px,10.4vw,46px);
+  text-shadow:0 1px 2px rgba(50,20,70,.18);
+  font-synthesis:none;-webkit-font-synthesis:none;
 }
-.arena .greet .g1{font-weight:400;font-size:clamp(30px,9.2vw,44px);letter-spacing:.01em}
-.arena .greet .g2{font-style:italic;font-weight:400;font-size:clamp(30px,9.2vw,44px);margin-left:.28em}
+.arena .greet .g1{font-weight:400;letter-spacing:.01em}
+.arena .greet .g2{font-weight:400;font-style:italic;margin-left:.26em}
 
 /* グラデーションの下に出す帯。用意だけで、まだ出していない。 */
 .pills{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 16px}
@@ -413,11 +424,11 @@ body::before{
   padding:9px 16px;font-size:14px;font-weight:800;font-family:var(--serif);
   background:#fff;cursor:pointer;white-space:nowrap;
 }
-.pill[data-tone="1"]{color:#C4500A;background:#FDE8D3}
-.pill[data-tone="2"]{color:#1F6F4E;background:#DCF0E3}
-.pill[data-tone="3"]{color:#2B4BAF;background:#DCE4FA}
-.pill[data-tone="4"]{color:#9B2B6B;background:#FBDCEC}
-.pill[data-tone="5"]{color:#1C6E86;background:#D7EEF4}
+.pill[data-hue="1"]{color:#C4500A;background:#FDE8D3}
+.pill[data-hue="2"]{color:#1F6F4E;background:#DCF0E3}
+.pill[data-hue="3"]{color:#2B4BAF;background:#DCE4FA}
+.pill[data-hue="4"]{color:#9B2B6B;background:#FBDCEC}
+.pill[data-hue="5"]{color:#1C6E86;background:#D7EEF4}
 
 .arena .skyFilm{
   position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
@@ -778,7 +789,6 @@ body::before{
 
 <div class="sentinel" id="arenaTop"></div>
 <section class="arena" id="arena">
-  <div class="dust" aria-hidden="true"><i></i></div>
   <p class="greet"><span class="g1">Hey,</span><span class="g2">YUITO</span></p>
 </section>
 
@@ -786,7 +796,7 @@ body::before{
      使うときは、この中身を複製して #pillsSlot に入れる。 -->
 <template id="pillsTpl">
   <div class="pills">
-    <button class="pill" type="button" data-tone="1"></button>
+    <button class="pill" type="button" data-hue="1"></button>
   </div>
 </template>
 <div id="pillsSlot"></div>
@@ -1955,7 +1965,7 @@ function renderTasks(){
   if(!drew && doneCount){
     const w=document.createElement("div");
     w.className="allClear";
-    w.innerHTML='全部やりきった。<small>'+monsterOf().name+' は倒れた。</small>';
+    w.innerHTML='全部やりきった。';
     el.appendChild(w);
   }
 
