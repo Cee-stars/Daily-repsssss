@@ -29,6 +29,11 @@
   --lv-hi:#B5F293;       /* 多い */
   --lv-mo:#C2ECF6;       /* ふつう */
   --lv-lo:#F2F1EC;       /* なし */
+  /* 丸の輪郭。塗りの色相そのままで、明るさだけ一段落とした */
+  --ln-vh:#C9449B;
+  --ln-hi:#8ED95F;
+  --ln-mo:#8FD2E8;
+  --ln-lo:#E2E0D9;
   --check:#FFD93D;       /* 済みの丸 */
   --accent:#FF7A18;
   --accent-soft:#FFF3E8;   /* 195 行で使っているのに定義が無かった */
@@ -160,25 +165,28 @@ button{background:none;border:0;cursor:pointer}
 .days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px 0;justify-items:center}
 .day{
   width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
-  font-size:12.5px;font-weight:600;color:var(--ink);background:var(--lv-lo);
-  font-family:var(--ui);
+  font-size:12.5px;font-weight:600;color:var(--ink);font-family:var(--ui);
+  /* 丸の輪郭。塗りより一段濃い線を回して、形を出す */
+  background:var(--lv-lo);border:1.5px solid var(--ln-lo);
+  box-sizing:border-box;
 }
-.day.pad{background:none}
-.day[data-l="vh"]{background:var(--lv-vh);color:#fff;font-weight:700}
-.day[data-l="hi"]{background:var(--lv-hi)}
-.day[data-l="mo"]{background:var(--lv-mo)}
-.day[data-l="lo"]{background:var(--lv-lo);color:#BFBDB8}
-.day[data-future="1"]{background:none;color:#DCDAD5}
+.day.pad{background:none;border:0}
+.day[data-l="vh"]{background:var(--lv-vh);border-color:var(--ln-vh);color:#fff;font-weight:700}
+.day[data-l="hi"]{background:var(--lv-hi);border-color:var(--ln-hi)}
+.day[data-l="mo"]{background:var(--lv-mo);border-color:var(--ln-mo)}
+.day[data-l="lo"]{background:var(--lv-lo);border-color:var(--ln-lo);color:#BFBDB8}
+.day[data-future="1"]{background:none;border-color:#F0EEE9;color:#DCDAD5}
 .day[data-sel="1"]{box-shadow:0 0 0 2px #fff, 0 0 0 4px var(--ink)}
 .day[data-today="1"]{font-weight:800;text-decoration:underline;text-underline-offset:2px}
 
 /* 凡例 */
 .lg{display:flex;flex-wrap:wrap;gap:12px;margin-top:16px}
 .lg span{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:#8E8C88}
-.lg span::before{content:"";width:11px;height:11px;border-radius:50%;background:var(--lv-lo)}
-.lg span[data-l="vh"]::before{background:var(--lv-vh)}
-.lg span[data-l="hi"]::before{background:var(--lv-hi)}
-.lg span[data-l="mo"]::before{background:var(--lv-mo)}
+.lg span::before{content:"";width:11px;height:11px;border-radius:50%;box-sizing:border-box;
+  background:var(--lv-lo);border:1.5px solid var(--ln-lo)}
+.lg span[data-l="vh"]::before{background:var(--lv-vh);border-color:var(--ln-vh)}
+.lg span[data-l="hi"]::before{background:var(--lv-hi);border-color:var(--ln-hi)}
+.lg span[data-l="mo"]::before{background:var(--lv-mo);border-color:var(--ln-mo)}
 
 /* ---- タスク ---- */
 /* 写真の下半分。クリーム色の地に、白い行が並ぶ */
@@ -1870,8 +1878,9 @@ function coachFor(dayIso, tasks, done){
 }
 
 function renderCoach(tasks, done){
-  const c = coachFor(sel, tasks, done);
   const el = $("#coach");
+  el.hidden = true; return;            /* コメントは出さない。戻すならこの行を消す */
+  const c = coachFor(sel, tasks, done);
   if(!c){ el.hidden = true; return; }
   el.hidden = false;
   if(c.tone) el.dataset.tone = c.tone; else delete el.dataset.tone;

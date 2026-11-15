@@ -1,5 +1,5 @@
 // DAILY REPS — オフライン用のキャッシュ
-const CACHE = "dailyreps-v72";
+const CACHE = "dailyreps-v73";
 const FILES = ["./", "./index.html", "./manifest.webmanifest",
                "./icon-180.png", "./icon-192.png", "./icon.png",
                "./plan-a.webp", "./boom.webp", "./fire.webp"];
