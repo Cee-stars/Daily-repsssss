@@ -1912,11 +1912,12 @@ function render(){
   $("#dateLine").textContent =
     (sel===today()?"TODAY · ":"") + (dt.getMonth()+1)+"月"+dt.getDate()+"日（"+wd+"）";
   $("#msg").textContent =
-    state.tasks.length===0 ? "タスクを追加しよう" :
-    tasks.length===0 ? "この日タイプに出すタスクはありません" :
-    dn===0 ? "今日のぶん、はじめよう" :
-    dn===tasks.length ? "全部やりきった。おつかれさま。" :
-    "あと "+(tasks.length-dn)+" レップ";
+    /* ここは同じ場所に出るので、5つとも英語でそろえてある */
+    state.tasks.length===0 ? "Add your first task" :
+    tasks.length===0 ? "Nothing on for today" :
+    dn===0 ? "Let's get going" :
+    dn===tasks.length ? "All done. Nice work." :
+    (tasks.length-dn)+" to go";
   $("#doneN").textContent=dn;
   $("#allN").textContent="/ "+tasks.length;
   $("#streak").textContent=streak();
