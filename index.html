@@ -1060,6 +1060,7 @@ body::before{content:none}   /* 写真の地は真っ白。放射グラデーシ
 
 const CATS = [
   /* mark は控えに引くマーカーの色。soft より濃い。薄いままだと白地で見えない */
+  {id:"pron",       name:"PRONUNCIATION", jp:"発音",    c:"#8D4B92", soft:"#FDEBFD", mark:"#F5D0F6"},
   {id:"grammar",    name:"GRAMMAR",    jp:"文法",        c:"#9C8600", soft:"#F5F4D9", mark:"#E5E1A8"},
   {id:"listening",  name:"LISTENING",  jp:"リスニング",  c:"#00A9E0", soft:"#E6F6FD", mark:"#BEE6F7"},
   {id:"speaking",   name:"SPEAKING",   jp:"スピーキング", c:"#FF7A18", soft:"#FFF3E8", mark:"#FFD9BA"},
@@ -1091,6 +1092,8 @@ const DEFAULT_TASKS = [
      1行目は一覧に常に出るまとめなので短くする。
      音声付き多読の★は1つの値しか持てないので、
      レッスンなし日の値にそろえてある（★あり）。 */
+  {id:"pronlearn", cat:"pron", name:"発音学習", core:false, dayType:"both", note:"Atsueigo"},
+
   {id:"shunkan", cat:"grammar", name:"瞬間英作文", core:false, dayType:"both", note:""},
 
   {id:"extread", cat:"reading", name:"音声付き多読", core:true, dayType:"off",
@@ -1139,7 +1142,7 @@ const DEFAULT_TASKS = [
    上の一覧を直したときは、この数字を1つ増やすこと。
    （時刻で比べていたが、端末で★を付け直すなどすると、その時刻が
      判定の時刻を追い越して入れ替えが届かなくなるのでやめた） */
-const TASKS_REV = 47;
+const TASKS_REV = 48;
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
@@ -1822,7 +1825,7 @@ function toggle(id, src){
    見ているのは：やった数、何を残しているか、時刻、過ぎた日か、連続日数。 */
 const MINUTES = {extread:20, undsh:10, lmshadow:10, ngsl:10, prep5:5, lesson25:25, toanki:5};
 /* 残りの重さ順。先に手を付けてほしいものを上に置く */
-const ORDER = ["lesson25","prep5","eikaiwa","hissu","shunkan","toanki","ngsl","dist1","tobook","undsh","lmshadow","ybook","extread"];
+const ORDER = ["lesson25","prep5","eikaiwa","hissu","shunkan","pronlearn","toanki","ngsl","dist1","tobook","undsh","lmshadow","ybook","extread"];
 
 function nameOf(id){
   const t = state.tasks.find(x=>x.id===id);
