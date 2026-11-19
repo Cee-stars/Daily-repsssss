@@ -1108,6 +1108,8 @@ const DEFAULT_TASKS = [
   {id:"keepgo", cat:"vocab", name:"KeepGoing", core:false, dayType:"both",
    note:""},
 
+  {id:"dist1", cat:"vocab", name:"Distinction 1", core:false, dayType:"both", note:""},
+
   {id:"ngsl", cat:"vocab", name:"NGSL", core:false, dayType:"both",
    note:"10分・毎日。頻出語を順番どおりに\n\n■ やり方\n① 新規の語を回す。表は英単語＋音声、裏は日本語\n② 話し言葉版の NGSL-S（約720語）に ngsl-s タグを付けて、そこから先に回す\n③ 10分たったら、終わっていなくても止める。残りは明日\n④ 復習が多い日は、新規を0にして復習だけ回す\n\n■ コツ\n表には必ず音声を付ける。読める語と、音で分かる語は別物\nHard はほぼ使わない。迷ったら Good\n\n■ 効果\n話し言葉で使われる語から順に埋まる\n音から意味が出る語が増えるので、{{サイトラ予測}}で止まる回数が減る\n\n■ 素材\nNGSL（newgeneralservicelist.com）。順番は自分で決めずリストの通りに\n次に足す語はすでに決めてある分を使う"},
 
@@ -1137,7 +1139,7 @@ const DEFAULT_TASKS = [
    上の一覧を直したときは、この数字を1つ増やすこと。
    （時刻で比べていたが、端末で★を付け直すなどすると、その時刻が
      判定の時刻を追い越して入れ替えが届かなくなるのでやめた） */
-const TASKS_REV = 46;
+const TASKS_REV = 47;
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
@@ -1820,7 +1822,7 @@ function toggle(id, src){
    見ているのは：やった数、何を残しているか、時刻、過ぎた日か、連続日数。 */
 const MINUTES = {extread:20, undsh:10, lmshadow:10, ngsl:10, prep5:5, lesson25:25, toanki:5};
 /* 残りの重さ順。先に手を付けてほしいものを上に置く */
-const ORDER = ["lesson25","prep5","eikaiwa","hissu","shunkan","toanki","ngsl","tobook","undsh","lmshadow","ybook","extread"];
+const ORDER = ["lesson25","prep5","eikaiwa","hissu","shunkan","toanki","ngsl","dist1","tobook","undsh","lmshadow","ybook","extread"];
 
 function nameOf(id){
   const t = state.tasks.find(x=>x.id===id);
