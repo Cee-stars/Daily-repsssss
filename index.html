@@ -1129,8 +1129,6 @@ const DEFAULT_TASKS = [
   {id:"eikaiwa", cat:"speaking", name:"英会話", core:false, dayType:"both",
    note:"![plan-a.webp]\nhttps://d27rnpuamwvieu.cloudfront.net/pdf/06J5Q3wpQXfxZDrbLPa70SAXX.pdf"},
 
-  {id:"toanki", cat:"vocab", name:"言えなかった表現をAnkiへ追加", core:true, dayType:"lesson",
-   note:"5分・レッスン日。その日のうちに入れる\n\n■ やり方\n① レッスンで言えなかった表現を拾う\n② カードにする（表は日本語、裏は英語）\n③ その日のうちに入れる\n\n■ コツ\n全部拾わない。3つまで\n講師が言い直した言い方を使う。自分で作文しない\n翌日に回さない。思い出せなくなる\n\n■ 効果\n言えなかったものが、翌日から2秒で言う対象になる\nカードが自分の失敗から作られるので、使う場面が決まっている\n\n■ 素材\nその日の{{レッスン}}。録画があれば見返す"}
 ];
 
 /* 配る一覧の版。記録が持っている版がこれより古ければ、タスクだけを
@@ -1140,7 +1138,7 @@ const DEFAULT_TASKS = [
    上の一覧を直したときは、この数字を1つ増やすこと。
    （時刻で比べていたが、端末で★を付け直すなどすると、その時刻が
      判定の時刻を追い越して入れ替えが届かなくなるのでやめた） */
-const TASKS_REV = 51;
+const TASKS_REV = 52;
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
@@ -1821,9 +1819,9 @@ function toggle(id, src){
 /* ---- その日の様子を見て出す一言 ----
    外の AI は呼ばない。通信もアカウントも要らないので、圏外でも必ず出る。
    見ているのは：やった数、何を残しているか、時刻、過ぎた日か、連続日数。 */
-const MINUTES = {extread:20, undsh:10, ngsl:10, prep5:5, lesson25:25, toanki:5};
+const MINUTES = {extread:20, undsh:10, ngsl:10, prep5:5, lesson25:25};
 /* 残りの重さ順。先に手を付けてほしいものを上に置く */
-const ORDER = ["lesson25","prep5","eikaiwa","shunkan","pronlearn","rbook","toanki","ngsl","dist1","tobook","undsh","ybook","extread"];
+const ORDER = ["lesson25","prep5","eikaiwa","shunkan","pronlearn","rbook","ngsl","dist1","tobook","undsh","ybook","extread"];
 
 function nameOf(id){
   const t = state.tasks.find(x=>x.id===id);
