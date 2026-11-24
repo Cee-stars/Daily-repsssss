@@ -35,6 +35,7 @@
   --ln-mo:#8FD2E8;
   --ln-lo:#E2E0D9;
   --check:#FFD93D;       /* 済みの丸 */
+  --sakura:#F2A2BE;      /* 成果のつまみ */
   --accent:#FF7A18;
   --accent-soft:#FFF3E8;   /* 195 行で使っているのに定義が無かった */
 
@@ -323,6 +324,66 @@ body[data-hinted="1"] .task .more{display:none}
 .sync[hidden]{display:none}
 
 /* ---- シート ---- */
+/* ───── 成果：端から出るつまみ ───── */
+.winTab{
+  position:fixed;z-index:35;top:52%;right:0;
+  width:40px;height:58px;padding:0;
+  display:grid;place-items:center;
+  background:var(--sakura);color:#fff;
+  /* 横向きの U。外側の角は落とし、内側だけ丸める */
+  border-radius:999px 0 0 999px;
+  box-shadow:-2px 2px 12px rgba(214,104,140,.34);
+  touch-action:none;            /* 指で動かすので、ブラウザのスクロールに取られないように */
+  transition:box-shadow .2s var(--ease), transform .2s var(--ease);
+}
+.winTab[data-side="left"]{right:auto;left:0;border-radius:0 999px 999px 0;
+  box-shadow:2px 2px 12px rgba(214,104,140,.34)}
+.winTab .ic{display:block;width:23px;height:23px;margin-inline:3px 0}
+.winTab[data-side="left"] .ic{margin-inline:0 3px}
+.winTab .ic svg{width:100%;height:100%;display:block}
+.winTab[data-drag="1"]{transform:scale(1.06);box-shadow:0 6px 20px rgba(214,104,140,.44)}
+
+/* ───── 成果：開いたときの面 ───── */
+.winSheet .inner{
+  background:
+    radial-gradient(62% 46% at 52% 34%, #FE4B47 0%, rgba(254,75,71,0) 66%),
+    radial-gradient(70% 52% at 14% 74%, #FE7F1F 0%, rgba(254,127,31,0) 70%),
+    radial-gradient(58% 44% at 92% 88%, #FFAA01 0%, rgba(255,170,1,0) 68%),
+    linear-gradient(168deg, #FFB207 0%, #FEA104 42%, #FE6A2E 100%);
+  color:#14100A;
+}
+.winSheet .wHead{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.winSheet h3{margin:0;font-family:var(--ui);font-size:30px;font-weight:800;letter-spacing:-.02em;color:#14100A}
+.winSheet .wAdd{
+  padding:10px 18px;border-radius:999px;background:#14100A;color:#fff;
+  font-size:13px;font-weight:700;white-space:nowrap;
+}
+.winSheet .wNew{margin-bottom:16px}
+.winSheet textarea{
+  width:100%;padding:14px;border-radius:16px;border:0;background:rgba(255,255,255,.92);
+  font-size:16px;font-family:var(--ui);line-height:1.7;resize:vertical;color:#14100A;
+}
+.winSheet .wRow{display:flex;gap:9px;margin-top:9px}
+.winSheet .wRow button{flex:1;padding:12px;border-radius:999px;font-size:14px;font-weight:700}
+.winSheet .wCancel{background:rgba(255,255,255,.55);color:#14100A}
+.winSheet .wSave{background:#14100A;color:#fff}
+.winSheet .wList{display:grid;gap:10px}
+.winSheet .wItem{
+  background:rgba(255,255,255,.93);border-radius:18px;padding:14px 16px;
+  display:grid;gap:6px;
+}
+.winSheet .wItem .wdate{font-size:11px;font-weight:700;letter-spacing:.06em;color:#A2704A}
+.winSheet .wItem .ws{font-size:15px;font-weight:600;line-height:1.75;white-space:pre-wrap;word-break:break-word}
+.winSheet .wItem .wx{justify-self:end;font-size:12px;font-weight:700;color:#B0582F;padding:4px 2px}
+.winSheet .wNone{
+  background:rgba(255,255,255,.55);border-radius:18px;padding:22px 16px;
+  text-align:center;font-size:13px;font-weight:600;line-height:1.8;color:#5A4327;
+}
+.winSheet .wClose{
+  width:100%;margin-top:18px;padding:14px;border-radius:999px;
+  background:rgba(255,255,255,.55);font-size:14px;font-weight:700;color:#14100A;
+}
+
 .sheet{position:fixed;inset:0;background:rgba(21,26,36,.42);display:none;align-items:flex-end;z-index:40}
 .sheet.on{display:flex}
 .inner{
@@ -940,6 +1001,30 @@ body::before{content:none}   /* 写真の地は真っ白。放射グラデーシ
 </div>
 <div class="note">通信なしで動きます・期限なし</div>
 
+<!-- 画面の端からちょこんと出るつまみ。上下に動かせて、左右どちらの端にも寄せられる -->
+<button class="winTab" id="winTab" type="button" aria-label="成果を見る" aria-haspopup="dialog">
+  <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h10v6a5 5 0 0 1-10 0V4Z"/><path d="M7 6H4.2a2 2 0 0 0 0 4H5"/><path d="M17 6h2.8a2 2 0 0 1 0 4H19"/><path d="M12 15v3"/><path d="M8.4 21h7.2"/></svg></span>
+</button>
+
+<div class="sheet winSheet" id="sheetWin" role="dialog" aria-label="成果">
+  <div class="inner">
+    <div class="wHead">
+      <h3>成果</h3>
+      <span class="spacer"></span>
+      <button class="wAdd" id="btnWinAdd" type="button">書く</button>
+    </div>
+    <div class="wNew" id="winNew" hidden>
+      <textarea id="winText" rows="3" placeholder="できるようになったことを書く"></textarea>
+      <div class="wRow">
+        <button class="wCancel" id="btnWinCancel" type="button">やめる</button>
+        <button class="wSave" id="btnWinSave" type="button">残す</button>
+      </div>
+    </div>
+    <div class="wList" id="winList"></div>
+    <button class="wClose" data-close="1" type="button">閉じる</button>
+  </div>
+</div>
+
 <div class="sheet" id="sheetEdit"><div class="inner">
   <h3>タスクを編集</h3>
   <div class="sub">★ を押すとコア習慣になります。コア習慣を全部やった日は連続日数が続きます。</div>
@@ -1193,7 +1278,7 @@ function normalize(s){
   const out = {
     tasks: (ok ? s.tasks : DEFAULT_TASKS).map(normTask),
     log:   {},
-    meta:  {tasksAt:0, tasksRev:0, marks:{}, cleared:{}}
+    meta:  {tasksAt:0, tasksRev:0, marks:{}, cleared:{}, wins:{}}
   };
   const src = (s && s.log && typeof s.log==="object") ? s.log : {};
   for(const d in src) if(Array.isArray(src[d]) && src[d].length) out.log[d]=[...new Set(src[d])];
@@ -1207,6 +1292,21 @@ function normalize(s){
     if(Object.keys(o).length) out.meta.marks[d]=o;
   }
   if(m && m.cleared) for(const d in m.cleared){ const t=+m.cleared[d]||0; if(t) out.meta.cleared[d]=t; }
+
+  /* 成果。1件ずつ {t:作った時刻, u:直した時刻, x:消したか, d:日付, s:本文}。
+     消したものも x:1 の墓標として残す。残さないと、片方で消しても
+     もう片方から戻ってきてしまう。 */
+  if(m && m.wins) for(const k in m.wins){
+    const w = m.wins[k]; if(!w || typeof w!=="object") continue;
+    const u = +w.u || +w.t || 0; if(!u) continue;
+    out.meta.wins[k] = {
+      t: +w.t || u,
+      u: u,
+      x: w.x ? 1 : 0,
+      d: typeof w.d==="string" ? w.d.slice(0,10) : "",
+      s: typeof w.s==="string" ? w.s.slice(0,2000) : ""
+    };
+  }
 
   /* 古い形（日ごとに1つの時刻）から移す */
   if(m && m.days) for(const d in m.days){
@@ -1254,8 +1354,15 @@ function mergeState(a,b){
     tasks: (takeB ? b.tasks : a.tasks).map(t=>({...t})),
     log:   {},
     meta:  {tasksAt:  Math.max(a.meta.tasksAt, b.meta.tasksAt),
-            tasksRev: Math.max(a.meta.tasksRev, b.meta.tasksRev), marks:{}, cleared:{}}
+            tasksRev: Math.max(a.meta.tasksRev, b.meta.tasksRev), marks:{}, cleared:{}, wins:{}}
   };
+
+  /* 成果は1件ずつ、直した時刻が新しいほうを残す。消した印も時刻で比べるので、
+     片方で消したものが、もう片方から戻ってくることはない。 */
+  new Set([].concat(Object.keys(a.meta.wins), Object.keys(b.meta.wins))).forEach(k=>{
+    const wa=a.meta.wins[k], wb=b.meta.wins[k];
+    out.meta.wins[k] = !wa ? wb : !wb ? wa : (wb.u > wa.u ? wb : wa);
+  });
   const dates = new Set([].concat(
     Object.keys(a.log), Object.keys(b.log),
     Object.keys(a.meta.marks), Object.keys(b.meta.marks),
@@ -1292,7 +1399,12 @@ function serialize(s){
     const o={}; Object.keys(s.meta.marks[d]).sort().forEach(id=>o[id]=s.meta.marks[d][id]); marks[d]=o;
   });
   Object.keys(s.meta.cleared).sort().forEach(d=>cleared[d]=s.meta.cleared[d]);
-  return JSON.stringify({v:7, tasks:s.tasks, log, meta:{tasksAt:s.meta.tasksAt, tasksRev:s.meta.tasksRev, marks, cleared}});
+  const wins={};
+  Object.keys(s.meta.wins).sort().forEach(k=>{
+    const w=s.meta.wins[k];
+    wins[k]={t:w.t, u:w.u, x:w.x, d:w.d, s:w.s};   // キーの順も固定する
+  });
+  return JSON.stringify({v:7, tasks:s.tasks, log, meta:{tasksAt:s.meta.tasksAt, tasksRev:s.meta.tasksRev, marks, cleared, wins}});
 }
 
 function load(){
@@ -1691,6 +1803,7 @@ const SYNC = {
         state = normalize(JSON.parse(merged));
         try{ localStorage.setItem(KEY, merged); }catch(e){}
         render();
+        if($("#sheetWin") && $("#sheetWin").classList.contains("on")) renderWins();
       }
       if(merged !== serialize(rem)) this.schedule(300);   // こちらにしかない分を送る
       else {
@@ -3220,6 +3333,115 @@ $("#fileIn").onchange=e=>{
   };
   r.readAsText(f); e.target.value="";
 };
+
+/* ---- 成果 ----
+   つまみは画面の端に貼り付く。指で上下に動かせて、画面の真ん中を越えて
+   離すと反対の端へ移る。置いた場所はこの端末にだけ覚える（記録ではないので同期しない）。
+   中身（成果そのもの）は meta.wins に入っていて、端末どうしで同期される。 */
+const WINPOS_KEY = "dailyreps:winTab";
+
+function winsAll(){
+  return Object.keys(state.meta.wins)
+    .map(k=>({k, ...state.meta.wins[k]}))
+    .filter(w=>!w.x)
+    .sort((a,b)=>b.t-a.t);          // 新しいものを上に
+}
+
+function renderWins(){
+  const el=$("#winList"); if(!el) return;
+  const list=winsAll();
+  el.innerHTML="";
+  if(!list.length){
+    const n=document.createElement("div");
+    n.className="wNone";
+    n.textContent="まだありません。\n「書く」から、できるようになったことを残してください。";
+    el.appendChild(n); return;
+  }
+  list.forEach(w=>{
+    const b=document.createElement("div");
+    b.className="wItem";
+    const d=document.createElement("div"); d.className="wdate";   /* .wd はカレンダーの曜日見出しが使っている */
+    d.textContent=(w.d||"").replace(/^(\d{4})-(\d{2})-(\d{2})$/,"$1年$2月$3日");
+    const p=document.createElement("div"); p.className="ws"; p.textContent=w.s;
+    const x=document.createElement("button"); x.className="wx"; x.type="button"; x.textContent="消す";
+    x.onclick=()=>{
+      if(!confirm("この成果を消します。")) return;
+      state.meta.wins[w.k] = {...state.meta.wins[w.k], x:1, u:Date.now()};
+      save(); renderWins();
+    };
+    b.append(d,p,x); el.appendChild(b);
+  });
+}
+
+function winAddOpen(on){
+  $("#winNew").hidden = !on;
+  $("#btnWinAdd").hidden = on;
+  if(on){ $("#winText").value=""; $("#winText").focus(); }
+}
+
+function openWins(){ renderWins(); winAddOpen(false); $("#sheetWin").classList.add("on"); }
+
+/* つまみを置く位置。上下は画面の高さに対する割合で覚える */
+function winTabPlace(){
+  const t=$("#winTab"); if(!t) return;
+  let p={side:"right", y:0.52};
+  try{ const raw=ls(WINPOS_KEY); if(raw) p={...p, ...JSON.parse(raw)}; }catch(e){}
+  if(p.side!=="left" && p.side!=="right") p.side="right";
+  p.y = Math.min(0.90, Math.max(0.10, +p.y || 0.52));
+  t.dataset.side=p.side;
+  t.style.top = (p.y*100).toFixed(2)+"%";
+  return p;
+}
+
+(function winTabDrag(){
+  const t=$("#winTab"); if(!t) return;
+  let id=null, moved=0, startY=0, startTop=0;
+
+  t.addEventListener("pointerdown", e=>{
+    id=e.pointerId; moved=0;
+    startY=e.clientY; startTop=t.getBoundingClientRect().top;
+    t.setPointerCapture(id);
+    t.dataset.drag="1";
+  });
+
+  t.addEventListener("pointermove", e=>{
+    if(id===null || e.pointerId!==id) return;
+    const dy=e.clientY-startY;
+    moved=Math.max(moved, Math.abs(dy), Math.abs(e.clientX-t.getBoundingClientRect().left));
+    const h=t.offsetHeight;
+    const top=Math.min(innerHeight-h-8, Math.max(8, startTop+dy));
+    t.style.top=top+"px";
+    /* 指が画面の真ん中を越えたら、その場で端を入れ替えて見せる */
+    t.dataset.side = (e.clientX < innerWidth/2) ? "left" : "right";
+  });
+
+  const end = e=>{
+    if(id===null || (e && e.pointerId!==id)) return;
+    try{ t.releasePointerCapture(id); }catch(err){}
+    id=null; delete t.dataset.drag;
+    const r=t.getBoundingClientRect();
+    const y=Math.min(.90, Math.max(.10, r.top/Math.max(1, innerHeight)));
+    t.style.top=(y*100).toFixed(2)+"%";
+    lsPut(WINPOS_KEY, JSON.stringify({side:t.dataset.side, y:+y.toFixed(4)}));
+    if(moved < 6) openWins();          // ほとんど動いていなければ「押した」とみなす
+  };
+  t.addEventListener("pointerup", end);
+  t.addEventListener("pointercancel", end);
+  /* 画面の大きさが変わると割合の基準も変わる。置き直す */
+  addEventListener("resize", ()=>{ if(id===null) winTabPlace(); }, {passive:true});
+})();
+
+$("#btnWinAdd").onclick    = ()=>winAddOpen(true);
+$("#btnWinCancel").onclick = ()=>winAddOpen(false);
+$("#btnWinSave").onclick   = ()=>{
+  const v=$("#winText").value.trim();
+  if(!v){ toast("書いてから押してください"); return; }
+  const now=Date.now();
+  const k="w"+now.toString(36)+Math.random().toString(36).slice(2,6);
+  state.meta.wins[k]={t:now, u:now, x:0, d:today(), s:v.slice(0,2000)};
+  save(); winAddOpen(false); renderWins(); toast("残しました");
+};
+winTabPlace();
 
 /* ---- PWA ---- */
 const ON_ARTIFACT = !!(window.claude && typeof window.claude.use === "function");
