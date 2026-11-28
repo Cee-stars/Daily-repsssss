@@ -242,6 +242,11 @@ button{background:none;border:0;cursor:pointer}
 .task[data-done="1"] .nm{color:#B5B2AD}
 .task .tx{flex:1;min-width:0}
 .task .nm{display:block;font-size:14.5px;font-weight:700;line-height:1.4;letter-spacing:-.01em}
+.task .nm .mn{
+  display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;
+  background:var(--lv-lo);color:#8E8C88;font-size:11px;font-weight:700;
+  letter-spacing:0;vertical-align:1px;white-space:nowrap;
+}
 .task .nt{display:block;margin-top:4px;font-size:12px;font-weight:500;color:#A8A6A1;line-height:1.7}
 /* 蛍光ペン風。塗りつぶすと12pxでは字が沈むので、下半分だけ色を乗せる */
 .task .nt .mk{
@@ -1185,18 +1190,18 @@ const DEFAULT_TASKS = [
      1行目は一覧に常に出るまとめなので短くする。
      音声付き多読の★は1つの値しか持てないので、
      レッスンなし日の値にそろえてある（★あり）。 */
-  {id:"pronlearn", cat:"pron", name:"発音学習", core:false, dayType:"both", note:"Atsueigo"},
+  {id:"pronlearn", cat:"pron", name:"発音学習", core:false, dayType:"both", min:20, note:"Atsueigo"},
 
-  {id:"shunkan", cat:"grammar", name:"瞬間英作文", core:false, dayType:"both", reps:2, note:""},
+  {id:"shunkan", cat:"grammar", name:"瞬間英作文", core:false, dayType:"both", reps:2, min:15, note:""},
 
-  {id:"atsuhyo", cat:"grammar", name:"Atsu 表", core:false, dayType:"both", note:""},
+  {id:"atsuhyo", cat:"grammar", name:"Atsu 表", core:false, dayType:"both", min:15, note:""},
 
 
   {id:"undsh", cat:"pron", name:"サイトラシャドーイング", core:false, dayType:"both",
-   note:"結論から言うと、シャドーイングのあとに「テキストなしで聞いて、意味だけで理解できるか確かめる」段階と「自分の言葉で再現する」段階を足すのがいいです。今の悩み（英語は聞き取れるのに意味が浮かばない）は、音と意味の結びつきがまだ自動になっていない状態です。シャドーイングは音に集中しやすく、意味が置き去りになりやすいので、その穴を埋める練習が必要です。\nおすすめの流れ（同じ素材で）\n\n1. サイトラ：意味を固める\n2. 音声とスクリプトの照合\n　1. スクリプトを見ないで2回聞き、だいたいの内容をつかみます。\n　2. 次にスクリプトを見ながら1文ずつ止めて聞き、文字どおりに発音されていない所に印を付けます。\n　　• 消える音 → ／（例：nex／t day）\n　　• つながる所 → ‿（例：pick‿it‿up）\n　　• 弱く短い所 → ○で囲む（例：(to)、(and)）\n　3. 印を付けた所は、実際に聞こえた音をカタカナか発音記号でメモします。例：going to →「ガナ」\n3. 精聴・音読\n　1. 1文聞いたら止めて、すぐ同じように言います（リピーティング）。\n　2. 印を付けた所は特に、音声と同じに聞こえるまで何度も言います。\n　3. 自分の声をスマホで録音して、音声と聞き比べるのが効果的です。\n4. シャドーイング（音）：音とリズムを真似る\n5. コンテンツ・シャドーイング：音ではなく「意味」を感じながらシャドーイングする。言いながら場面や映像を頭に浮かべます。ここが一番効くはずです。\n6. ブラインドリスニング：テキストなしで聞き、日本語を通さずに理解できるか確かめる。止まった箇所だけテキストで確認します。\n7. リテリング：聞いた内容を英語で2〜3文に要約して口に出す。意味を自分のものにしないとできない練習です。\n\n効果を上げるコツ\n\n* 同じ素材を数日あけて繰り返す：1日で終わらせず、3日後と1週間後にもう一度聞いて、一発で意味が浮かぶか確かめます。これで意味の結びつきが自動化されます。\n* 少し簡単な素材も混ぜる：知っている単語ばかりの英語を大量に聞くと、「聞いた瞬間にわかる」感覚が育ちます。\n\n特に3と5を足すだけでも、「わかるけど意味がわからない」状態はかなり減っていくはずです。"},
+   min:10, note:"結論から言うと、シャドーイングのあとに「テキストなしで聞いて、意味だけで理解できるか確かめる」段階と「自分の言葉で再現する」段階を足すのがいいです。今の悩み（英語は聞き取れるのに意味が浮かばない）は、音と意味の結びつきがまだ自動になっていない状態です。シャドーイングは音に集中しやすく、意味が置き去りになりやすいので、その穴を埋める練習が必要です。\nおすすめの流れ（同じ素材で）\n\n1. サイトラ：意味を固める\n2. 音声とスクリプトの照合\n　1. スクリプトを見ないで2回聞き、だいたいの内容をつかみます。\n　2. 次にスクリプトを見ながら1文ずつ止めて聞き、文字どおりに発音されていない所に印を付けます。\n　　• 消える音 → ／（例：nex／t day）\n　　• つながる所 → ‿（例：pick‿it‿up）\n　　• 弱く短い所 → ○で囲む（例：(to)、(and)）\n　3. 印を付けた所は、実際に聞こえた音をカタカナか発音記号でメモします。例：going to →「ガナ」\n3. 精聴・音読\n　1. 1文聞いたら止めて、すぐ同じように言います（リピーティング）。\n　2. 印を付けた所は特に、音声と同じに聞こえるまで何度も言います。\n　3. 自分の声をスマホで録音して、音声と聞き比べるのが効果的です。\n4. シャドーイング（音）：音とリズムを真似る\n5. コンテンツ・シャドーイング：音ではなく「意味」を感じながらシャドーイングする。言いながら場面や映像を頭に浮かべます。ここが一番効くはずです。\n6. ブラインドリスニング：テキストなしで聞き、日本語を通さずに理解できるか確かめる。止まった箇所だけテキストで確認します。\n7. リテリング：聞いた内容を英語で2〜3文に要約して口に出す。意味を自分のものにしないとできない練習です。\n\n効果を上げるコツ\n\n* 同じ素材を数日あけて繰り返す：1日で終わらせず、3日後と1週間後にもう一度聞いて、一発で意味が浮かぶか確かめます。これで意味の結びつきが自動化されます。\n* 少し簡単な素材も混ぜる：知っている単語ばかりの英語を大量に聞くと、「聞いた瞬間にわかる」感覚が育ちます。\n\n特に3と5を足すだけでも、「わかるけど意味がわからない」状態はかなり減っていくはずです。"},
 
 
-  {id:"dist1", cat:"vocab", name:"Distinction 1", core:false, dayType:"both", reps:2, note:""},
+  {id:"dist1", cat:"vocab", name:"Distinction 1", core:false, dayType:"both", reps:2, min:60, note:""},
 
 
   {id:"lesson25", cat:"speaking", name:"オンライン英会話", core:true, dayType:"lesson",
@@ -1217,7 +1222,7 @@ const DEFAULT_TASKS = [
    上の一覧を直したときは、この数字を1つ増やすこと。
    （時刻で比べていたが、端末で★を付け直すなどすると、その時刻が
      判定の時刻を追い越して入れ替えが届かなくなるのでやめた） */
-const TASKS_REV = 57;
+const TASKS_REV = 58;
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
@@ -1961,7 +1966,8 @@ function toggle(id, src){
 /* ---- その日の様子を見て出す一言 ----
    外の AI は呼ばない。通信もアカウントも要らないので、圏外でも必ず出る。
    見ているのは：やった数、何を残しているか、時刻、過ぎた日か、連続日数。 */
-const MINUTES = {undsh:10, prep5:5, lesson25:25};
+/* 分はタスク自身が持つ（min）。ここはその引き方をまとめただけ。 */
+const minOf = id => +((state.tasks.find(t=>t.id===id)||{}).min) || 0;
 /* 残りの重さ順。先に手を付けてほしいものを上に置く */
 const ORDER = ["lesson25","prep5","lrev","shunkan","atsuhyo","pronlearn","dist1","undsh"];
 
@@ -1970,7 +1976,7 @@ function nameOf(id){
   return t ? t.name.replace(/（.*?）/g,"").trim() : id;
 }
 function restMinutes(ids){
-  return ids.reduce((n,id)=>n+(MINUTES[id]||0), 0);
+  return ids.reduce((n,id)=>n+minOf(id), 0);
 }
 /* 日ごとに変えて、同じ言い回しが続かないようにする */
 function pick(arr, seed){
@@ -2038,9 +2044,9 @@ function coachFor(dayIso, tasks, done){
   if(coreLeft === 0 && left.length) return {tone:"win", head:"★ のコア習慣は全部終わっています。",
     body:"連続日数はこれで続きます。残りは余力があればで大丈夫です。"};
   if(left.length === 1) return {tone:"push", head:"あと1つ、"+nameOf(nextId)+"だけです。",
-    body:MINUTES[nextId] ? MINUTES[nextId]+"分です。ここで閉じるのはもったいない。" : "ここで閉じるのはもったいない。"};
-  const why = (MINUTES[nextId]||99) <= 10
-    ? "次は"+nameOf(nextId)+"。"+MINUTES[nextId]+"分で終わるので、先に片づけると残りが軽く見えます。"
+    body:minOf(nextId) ? minOf(nextId)+"分です。ここで閉じるのはもったいない。" : "ここで閉じるのはもったいない。"};
+  const why = (minOf(nextId)||99) <= 10
+    ? "次は"+nameOf(nextId)+"。"+minOf(nextId)+"分で終わるので、先に片づけると残りが軽く見えます。"
     : "次は"+nameOf(nextId)+"をおすすめします。重いものを先に置くほうが、最後まで届きます。";
   return {tone:"", head:"のこり "+left.length+"つ、"+mins+"分。", body:why};
 }
@@ -2196,7 +2202,9 @@ function renderTasks(){
 
     const h=document.createElement("div");
     h.className="cat"; h.style.setProperty("--c",cat.c);
+    const catMin = list.reduce((n,t)=>n+(+t.min||0), 0);
     h.innerHTML='<i></i><h2>'+cat.name+'</h2><span>'+
+      (catMin ? catMin+'分 ・ ' : '')+
       list.filter(t=>done.includes(t.id)).length+"/"+list.length+'</span>';
     el.appendChild(h);
 
@@ -2212,6 +2220,11 @@ function renderTasks(){
       b.innerHTML='<span class="box">&#10003;</span><span class="tx"><span class="nm"></span>'+
         (t.note?'<span class="nt"></span>':'')+'</span>'+(t.core?'<span class="star">&#9733;</span>':'');
       b.querySelector(".nm").textContent=t.name;
+      if(+t.min){
+        const mn=document.createElement("span");
+        mn.className="mn"; mn.textContent=(+t.min)+"分";
+        b.querySelector(".nm").appendChild(mn);
+      }
       let hasRest=false;
       if(t.note) hasRest = paintNoteSplit(b.querySelector(".nt"), t.note);
       if(hasRest){
