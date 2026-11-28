@@ -214,6 +214,38 @@ button{background:none;border:0;cursor:pointer}
   font-size:12.5px;font-weight:700;white-space:nowrap;
 }
 
+/* 枠の下のバー */
+.mbar{margin:10px 0 4px}
+.mbTog{
+  width:100%;padding:11px;border-radius:999px;background:var(--card);
+  font-size:12.5px;font-weight:700;color:#8E8C88;
+}
+.mbar[data-open="1"] .mbTog{background:var(--dark);color:#fff}
+.mbPane{display:none;padding:14px 14px 10px;margin-top:8px;border-radius:18px;background:var(--card)}
+.mbar[data-open="1"] .mbPane{display:block}
+.mbNum{display:flex;align-items:baseline;gap:6px;margin-bottom:10px}
+.mbNum b{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.mbNum span{font-size:12px;font-weight:600;color:#A8A6A1}
+.mbPane input[type="range"]{
+  -webkit-appearance:none;appearance:none;width:100%;height:26px;
+  background:none;display:block;margin:0;
+}
+.mbPane input[type="range"]::-webkit-slider-runnable-track{
+  height:6px;border-radius:999px;background:var(--lv-lo);
+}
+.mbPane input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:26px;height:26px;margin-top:-10px;border-radius:50%;
+  background:var(--dark);border:3px solid #fff;
+  box-shadow:0 1px 6px rgba(17,17,17,.3);cursor:grab;
+}
+.mbPane input[type="range"]::-moz-range-track{height:6px;border-radius:999px;background:var(--lv-lo)}
+.mbPane input[type="range"]::-moz-range-thumb{
+  width:20px;height:20px;border-radius:50%;background:var(--dark);border:3px solid #fff;
+}
+.mbTicks{display:flex;justify-content:space-between;margin-top:2px}
+.mbTicks span{font-size:10px;font-weight:600;color:#C9C7C2}
+
 .cat{margin:16px 0 8px;display:flex;align-items:center;gap:9px}
 .cat i{width:8px;height:8px;border-radius:50%;background:var(--c);font-style:normal}
 .cat h2{margin:0;font-family:var(--ui);font-size:11px;font-weight:700;letter-spacing:.1em;color:#A5A39E}
@@ -1190,18 +1222,18 @@ const DEFAULT_TASKS = [
      1行目は一覧に常に出るまとめなので短くする。
      音声付き多読の★は1つの値しか持てないので、
      レッスンなし日の値にそろえてある（★あり）。 */
-  {id:"pronlearn", cat:"pron", name:"発音学習", core:false, dayType:"both", min:20, note:"Atsueigo"},
+  {id:"pronlearn", cat:"pron", name:"発音学習", core:false, dayType:"both", min:40, note:"Atsueigo"},
 
-  {id:"shunkan", cat:"grammar", name:"瞬間英作文", core:false, dayType:"both", reps:2, min:15, note:""},
+  {id:"shunkan", cat:"grammar", name:"瞬間英作文", core:false, dayType:"both", reps:2, min:30, note:""},
 
-  {id:"atsuhyo", cat:"grammar", name:"Atsu 表", core:false, dayType:"both", min:15, note:""},
+  {id:"atsuhyo", cat:"grammar", name:"Atsu 表", core:false, dayType:"both", min:30, note:""},
 
 
   {id:"undsh", cat:"pron", name:"サイトラシャドーイング", core:false, dayType:"both",
-   min:10, note:"結論から言うと、シャドーイングのあとに「テキストなしで聞いて、意味だけで理解できるか確かめる」段階と「自分の言葉で再現する」段階を足すのがいいです。今の悩み（英語は聞き取れるのに意味が浮かばない）は、音と意味の結びつきがまだ自動になっていない状態です。シャドーイングは音に集中しやすく、意味が置き去りになりやすいので、その穴を埋める練習が必要です。\nおすすめの流れ（同じ素材で）\n\n1. サイトラ：意味を固める\n2. 音声とスクリプトの照合\n　1. スクリプトを見ないで2回聞き、だいたいの内容をつかみます。\n　2. 次にスクリプトを見ながら1文ずつ止めて聞き、文字どおりに発音されていない所に印を付けます。\n　　• 消える音 → ／（例：nex／t day）\n　　• つながる所 → ‿（例：pick‿it‿up）\n　　• 弱く短い所 → ○で囲む（例：(to)、(and)）\n　3. 印を付けた所は、実際に聞こえた音をカタカナか発音記号でメモします。例：going to →「ガナ」\n3. 精聴・音読\n　1. 1文聞いたら止めて、すぐ同じように言います（リピーティング）。\n　2. 印を付けた所は特に、音声と同じに聞こえるまで何度も言います。\n　3. 自分の声をスマホで録音して、音声と聞き比べるのが効果的です。\n4. シャドーイング（音）：音とリズムを真似る\n5. コンテンツ・シャドーイング：音ではなく「意味」を感じながらシャドーイングする。言いながら場面や映像を頭に浮かべます。ここが一番効くはずです。\n6. ブラインドリスニング：テキストなしで聞き、日本語を通さずに理解できるか確かめる。止まった箇所だけテキストで確認します。\n7. リテリング：聞いた内容を英語で2〜3文に要約して口に出す。意味を自分のものにしないとできない練習です。\n\n効果を上げるコツ\n\n* 同じ素材を数日あけて繰り返す：1日で終わらせず、3日後と1週間後にもう一度聞いて、一発で意味が浮かぶか確かめます。これで意味の結びつきが自動化されます。\n* 少し簡単な素材も混ぜる：知っている単語ばかりの英語を大量に聞くと、「聞いた瞬間にわかる」感覚が育ちます。\n\n特に3と5を足すだけでも、「わかるけど意味がわからない」状態はかなり減っていくはずです。"},
+   min:20, note:"結論から言うと、シャドーイングのあとに「テキストなしで聞いて、意味だけで理解できるか確かめる」段階と「自分の言葉で再現する」段階を足すのがいいです。今の悩み（英語は聞き取れるのに意味が浮かばない）は、音と意味の結びつきがまだ自動になっていない状態です。シャドーイングは音に集中しやすく、意味が置き去りになりやすいので、その穴を埋める練習が必要です。\nおすすめの流れ（同じ素材で）\n\n1. サイトラ：意味を固める\n2. 音声とスクリプトの照合\n　1. スクリプトを見ないで2回聞き、だいたいの内容をつかみます。\n　2. 次にスクリプトを見ながら1文ずつ止めて聞き、文字どおりに発音されていない所に印を付けます。\n　　• 消える音 → ／（例：nex／t day）\n　　• つながる所 → ‿（例：pick‿it‿up）\n　　• 弱く短い所 → ○で囲む（例：(to)、(and)）\n　3. 印を付けた所は、実際に聞こえた音をカタカナか発音記号でメモします。例：going to →「ガナ」\n3. 精聴・音読\n　1. 1文聞いたら止めて、すぐ同じように言います（リピーティング）。\n　2. 印を付けた所は特に、音声と同じに聞こえるまで何度も言います。\n　3. 自分の声をスマホで録音して、音声と聞き比べるのが効果的です。\n4. シャドーイング（音）：音とリズムを真似る\n5. コンテンツ・シャドーイング：音ではなく「意味」を感じながらシャドーイングする。言いながら場面や映像を頭に浮かべます。ここが一番効くはずです。\n6. ブラインドリスニング：テキストなしで聞き、日本語を通さずに理解できるか確かめる。止まった箇所だけテキストで確認します。\n7. リテリング：聞いた内容を英語で2〜3文に要約して口に出す。意味を自分のものにしないとできない練習です。\n\n効果を上げるコツ\n\n* 同じ素材を数日あけて繰り返す：1日で終わらせず、3日後と1週間後にもう一度聞いて、一発で意味が浮かぶか確かめます。これで意味の結びつきが自動化されます。\n* 少し簡単な素材も混ぜる：知っている単語ばかりの英語を大量に聞くと、「聞いた瞬間にわかる」感覚が育ちます。\n\n特に3と5を足すだけでも、「わかるけど意味がわからない」状態はかなり減っていくはずです。"},
 
 
-  {id:"dist1", cat:"vocab", name:"Distinction 1", core:false, dayType:"both", reps:2, min:60, note:""},
+  {id:"dist1", cat:"vocab", name:"Distinction 1", core:false, dayType:"both", reps:2, min:120, note:""},
 
 
   {id:"lesson25", cat:"speaking", name:"オンライン英会話", core:true, dayType:"lesson",
@@ -1222,7 +1254,7 @@ const DEFAULT_TASKS = [
    上の一覧を直したときは、この数字を1つ増やすこと。
    （時刻で比べていたが、端末で★を付け直すなどすると、その時刻が
      判定の時刻を追い越して入れ替えが届かなくなるのでやめた） */
-const TASKS_REV = 58;
+const TASKS_REV = 59;
 
 const KEY = "dailyreps.v2";
 const REMOTE = "data/state.json";   // Artifact 版の保存先
@@ -1272,7 +1304,7 @@ function normalize(s){
   const out = {
     tasks: (ok ? s.tasks : DEFAULT_TASKS).map(normTask),
     log:   {},
-    meta:  {tasksAt:0, tasksRev:0, marks:{}, cleared:{}, wins:{}}
+    meta:  {tasksAt:0, tasksRev:0, marks:{}, cleared:{}, wins:{}, mins:{}}
   };
   const src = (s && s.log && typeof s.log==="object") ? s.log : {};
   for(const d in src) if(Array.isArray(src[d]) && src[d].length) out.log[d]=[...new Set(src[d])];
@@ -1290,6 +1322,20 @@ function normalize(s){
   /* 成果。1件ずつ {t:作った時刻, u:直した時刻, x:消したか, d:日付, s:本文}。
      消したものも x:1 の墓標として残す。残さないと、片方で消しても
      もう片方から戻ってきてしまう。 */
+  /* その日に枠ごとに何分できたか。{v:分, u:直した時刻}。
+     u は端末どうしを突き合わせるときに、新しいほうを残すために持つ。 */
+  if(m && m.mins) for(const d in m.mins){
+    const src2 = m.mins[d]; if(!src2 || typeof src2!=="object") continue;
+    const o={};
+    for(const c in src2){
+      const w = src2[c]; if(!w || typeof w!=="object") continue;
+      const v = Math.max(0, Math.min(180, Math.round(+w.v||0)));
+      const u = +w.u || 0;
+      if(u) o[c] = {v, u};
+    }
+    if(Object.keys(o).length) out.meta.mins[d]=o;
+  }
+
   if(m && m.wins) for(const k in m.wins){
     const w = m.wins[k]; if(!w || typeof w!=="object") continue;
     const u = +w.u || +w.t || 0; if(!u) continue;
@@ -1348,8 +1394,18 @@ function mergeState(a,b){
     tasks: (takeB ? b.tasks : a.tasks).map(t=>({...t})),
     log:   {},
     meta:  {tasksAt:  Math.max(a.meta.tasksAt, b.meta.tasksAt),
-            tasksRev: Math.max(a.meta.tasksRev, b.meta.tasksRev), marks:{}, cleared:{}, wins:{}}
+            tasksRev: Math.max(a.meta.tasksRev, b.meta.tasksRev), marks:{}, cleared:{}, wins:{}, mins:{}}
   };
+
+  /* 何分できたかも1つずつ、直した時刻が新しいほうを残す */
+  new Set([].concat(Object.keys(a.meta.mins), Object.keys(b.meta.mins))).forEach(d=>{
+    const ma=a.meta.mins[d]||{}, mb=b.meta.mins[d]||{}, o={};
+    new Set([].concat(Object.keys(ma), Object.keys(mb))).forEach(c=>{
+      const wa=ma[c], wb=mb[c];
+      o[c] = !wa ? wb : !wb ? wa : (wb.u > wa.u ? wb : wa);
+    });
+    if(Object.keys(o).length) out.meta.mins[d]=o;
+  });
 
   /* 成果は1件ずつ、直した時刻が新しいほうを残す。消した印も時刻で比べるので、
      片方で消したものが、もう片方から戻ってくることはない。 */
@@ -1393,12 +1449,20 @@ function serialize(s){
     const o={}; Object.keys(s.meta.marks[d]).sort().forEach(id=>o[id]=s.meta.marks[d][id]); marks[d]=o;
   });
   Object.keys(s.meta.cleared).sort().forEach(d=>cleared[d]=s.meta.cleared[d]);
+  const mins={};
+  Object.keys(s.meta.mins).sort().forEach(d=>{
+    const o={};
+    Object.keys(s.meta.mins[d]).sort().forEach(c=>{
+      const w=s.meta.mins[d][c]; o[c]={v:w.v, u:w.u};   // キーの順も固定する
+    });
+    mins[d]=o;
+  });
   const wins={};
   Object.keys(s.meta.wins).sort().forEach(k=>{
     const w=s.meta.wins[k];
     wins[k]={t:w.t, u:w.u, x:w.x, d:w.d, s:w.s};   // キーの順も固定する
   });
-  return JSON.stringify({v:7, tasks:s.tasks, log, meta:{tasksAt:s.meta.tasksAt, tasksRev:s.meta.tasksRev, marks, cleared, wins}});
+  return JSON.stringify({v:7, tasks:s.tasks, log, meta:{tasksAt:s.meta.tasksAt, tasksRev:s.meta.tasksRev, marks, cleared, wins, mins}});
 }
 
 function load(){
@@ -1968,6 +2032,19 @@ function toggle(id, src){
    見ているのは：やった数、何を残しているか、時刻、過ぎた日か、連続日数。 */
 /* 分はタスク自身が持つ（min）。ここはその引き方をまとめただけ。 */
 const minOf = id => +((state.tasks.find(t=>t.id===id)||{}).min) || 0;
+
+/* 枠の目安（その日に出るタスクの分の合計）と、実際にできた分 */
+const catTarget = cat => visibleTasks().filter(t=>t.cat===cat)
+                          .reduce((n,t)=>n+(+t.min||0), 0);
+const catDone   = (d,cat) => ((state.meta.mins[d]||{})[cat]||{}).v || 0;
+function setCatDone(d, cat, v){
+  v = Math.max(0, Math.min(180, Math.round(v)));
+  const day = state.meta.mins[d] || (state.meta.mins[d] = {});
+  day[cat] = {v, u: Date.now()};
+  save();
+}
+/* どの枠のバーを開いているか。画面を描き直しても開いたままにする */
+const openBars = new Set();
 /* 残りの重さ順。先に手を付けてほしいものを上に置く */
 const ORDER = ["lesson25","prep5","lrev","shunkan","atsuhyo","pronlearn","dist1","undsh"];
 
@@ -2249,6 +2326,10 @@ function renderTasks(){
       el.appendChild(b);
       drew++;
     }
+
+    /* 目安のあるカテゴリだけ、下にバーを出す */
+    const tgt = list.reduce((n,t)=>n+(+t.min||0), 0);
+    if(tgt) el.appendChild(minBar(cat, tgt));
   }
 
   if(!drew && doneCount){
@@ -2952,6 +3033,67 @@ function paintNote(el, note){
     paintLine(row, head ? line.slice(2) : line);
     el.appendChild(row);
   }
+}
+
+
+/* 枠の下に出す「何分できた？」のバー。
+   ふだんはボタンだけ。押すと開く。開いた状態は openBars が覚えていて、
+   チェックを付けて描き直されても閉じない。 */
+function minBar(cat, tgt){
+  const wrap=document.createElement("div");
+  wrap.className="mbar";
+  const open=openBars.has(cat.id);
+  wrap.dataset.open = open ? "1" : "0";
+
+  const btn=document.createElement("button");
+  btn.type="button"; btn.className="mbTog";
+  const now=()=>catDone(sel, cat.id);
+  const label=()=> open2()
+      ? "閉じる"
+      : (now() ? now()+"分 できた" : "何分できた？");
+  const open2=()=> wrap.dataset.open==="1";
+  btn.textContent=label();
+  wrap.appendChild(btn);
+
+  const pane=document.createElement("div");
+  pane.className="mbPane";
+  const head=document.createElement("div");
+  head.className="mbNum";
+  const big=document.createElement("b"); big.textContent=now();
+  const unit=document.createElement("span"); unit.textContent="分 / 目安 "+tgt+"分";
+  head.append(big, unit);
+
+  const rng=document.createElement("input");
+  rng.type="range"; rng.min="0"; rng.max="180"; rng.step="5";
+  rng.value=String(now());
+  rng.setAttribute("aria-label", cat.name+" でできた分");
+
+  const ticks=document.createElement("div");
+  ticks.className="mbTicks";
+  [0,30,60,90,120,150,180].forEach(v=>{
+    const t=document.createElement("span"); t.textContent=v; ticks.appendChild(t);
+  });
+
+  /* 動かしている間は数字だけ変える。離したときに1回だけ保存する。
+     毎回保存すると、指を動かすたびに書き込みと同期が走って重い。 */
+  rng.addEventListener("input", ()=>{ big.textContent=rng.value; });
+  const commit=()=>{
+    setCatDone(sel, cat.id, +rng.value);
+    big.textContent=rng.value;
+    btn.textContent=label();
+  };
+  rng.addEventListener("change", commit);
+
+  pane.append(head, rng, ticks);
+  wrap.appendChild(pane);
+
+  btn.onclick=()=>{
+    const to = wrap.dataset.open==="1" ? "0" : "1";
+    wrap.dataset.open=to;
+    if(to==="1") openBars.add(cat.id); else openBars.delete(cat.id);
+    btn.textContent=label();
+  };
+  return wrap;
 }
 
 /* ---- 編集 ---- */
